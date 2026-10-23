@@ -22,42 +22,33 @@ export async function extractTextFromFile(
   const normalizedType = fileType.toLowerCase();
 
   if (normalizedType === "pdf" || normalizedType === "application/pdf") {
-    // Direct PDF.js document loader - extracts clean text from all font encodings & FlateDecode streams
-    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    const loadingTask = pdfjs.getDocument({
-      data: new Uint8Array(buffer),
-      useSystemFonts: true,
-      disableFontFace: true,
-      isEvalSupported: false,
+    // Pure Node.js PDF extraction with zero web-worker dependencies
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require("pdf-parse/lib/pdf-parse.js");
+    const pages: ExtractedPage[] = [];
+    let pageCounter = 1;
+
+    const data = await pdfParse(buffer, {
+      pagerender: (pageData: any) => {
+        return pageData.getTextContent().then((textContent: any) => {
+          const text = textContent.items.map((i: any) => i.str).join(" ");
+          if (text.trim().length > 0) {
+            pages.push({ pageNumber: pageCounter++, text: text.trim() });
+          }
+          return text;
+        });
+      },
     });
 
-    const doc = await loadingTask.promise;
-    const pages: ExtractedPage[] = [];
-
-    for (let i = 1; i <= doc.numPages; i++) {
-      const page = await doc.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => ("str" in item ? item.str : ""))
-        .filter((s: string) => s.length > 0)
-        .join(" ");
-
-      if (pageText.trim().length > 0) {
-        pages.push({
-          pageNumber: i,
-          text: pageText.trim(),
-        });
-      }
-      page.cleanup();
+    if (pages.length > 0) {
+      return pages;
     }
 
-    await doc.destroy();
-
-    if (pages.length === 0) {
-      throw new Error("This PDF does not contain selectable text (may be an image scan).");
+    if (data.text && data.text.trim().length > 0) {
+      return [{ pageNumber: 1, text: data.text.trim() }];
     }
 
-    return pages;
+    throw new Error("This PDF does not contain selectable text (may be an image scan).");
   }
 
   if (
