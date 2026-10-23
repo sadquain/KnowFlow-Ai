@@ -1,4 +1,3 @@
-import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { getEmbeddingModel } from "@/lib/ai/factory";
@@ -16,9 +15,6 @@ export interface ProcessingResult {
   error?: string;
 }
 
-/**
- * Extracts raw text and page metadata from supported file formats.
- */
 export async function extractTextFromFile(
   buffer: Buffer,
   fileType: string
@@ -26,24 +22,42 @@ export async function extractTextFromFile(
   const normalizedType = fileType.toLowerCase();
 
   if (normalizedType === "pdf" || normalizedType === "application/pdf") {
-    const parser = new PDFParse({ data: buffer });
-    try {
-      const textResult = await parser.getText();
-      if (textResult.pages && textResult.pages.length > 0) {
-        return textResult.pages.map((p) => ({
-          text: p.text,
-          pageNumber: p.num,
-        }));
+    // Direct PDF.js document loader - extracts clean text from all font encodings & FlateDecode streams
+    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const loadingTask = pdfjs.getDocument({
+      data: new Uint8Array(buffer),
+      useSystemFonts: true,
+      disableFontFace: true,
+      isEvalSupported: false,
+    });
+
+    const doc = await loadingTask.promise;
+    const pages: ExtractedPage[] = [];
+
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => ("str" in item ? item.str : ""))
+        .filter((s: string) => s.length > 0)
+        .join(" ");
+
+      if (pageText.trim().length > 0) {
+        pages.push({
+          pageNumber: i,
+          text: pageText.trim(),
+        });
       }
-      return [
-        {
-          text: textResult.text,
-          pageNumber: 1,
-        },
-      ];
-    } finally {
-      await parser.destroy();
+      page.cleanup();
     }
+
+    await doc.destroy();
+
+    if (pages.length === 0) {
+      throw new Error("This PDF does not contain selectable text (may be an image scan).");
+    }
+
+    return pages;
   }
 
   if (

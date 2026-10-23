@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { localStore } from "@/lib/storage/store";
 
 export async function DELETE(
   req: NextRequest,
@@ -14,15 +15,17 @@ export async function DELETE(
       return NextResponse.json({ error: "Missing document id." }, { status: 400 });
     }
 
-    const supabase = createAdminClient();
-    let query = supabase.from("documents").delete().eq("id", id);
-    if (workspaceId) {
-      query = query.eq("workspace_id", workspaceId);
-    }
+    localStore.deleteDocument(id);
 
-    const { error } = await query;
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    try {
+      const supabase = createAdminClient();
+      let query = supabase.from("documents").delete().eq("id", id);
+      if (workspaceId) {
+        query = query.eq("workspace_id", workspaceId);
+      }
+      await query;
+    } catch {
+      // Local deletion already succeeded
     }
 
     return NextResponse.json({ success: true, deletedId: id });
