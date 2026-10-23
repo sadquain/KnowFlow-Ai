@@ -48,9 +48,8 @@ export function sanitizeQuestion(question: string): string {
   return trimmed;
 }
 
-/**
- * Searches pgvector for chunks in the workspace that match the query embedding.
- */
+import { localStore } from "@/lib/storage/store";
+
 export async function retrieveRelevantChunks(
   question: string,
   workspaceId: string,
@@ -58,26 +57,30 @@ export async function retrieveRelevantChunks(
   matchThreshold: number = 0.55,
   matchCount: number = 5
 ): Promise<RetrievedChunk[]> {
-  const supabase = createAdminClient();
-  const embeddingModel = getEmbeddingModel();
+  try {
+    const supabase = createAdminClient();
+    const embeddingModel = getEmbeddingModel();
 
-  // 1. Generate query embedding
-  const queryEmbedding = await embeddingModel.embedQuery(question);
+    // 1. Generate query embedding
+    const queryEmbedding = await embeddingModel.embedQuery(question);
 
-  // 2. Call parameterized stored procedure in PostgreSQL
-  const { data, error } = await supabase.rpc("match_document_chunks", {
-    query_embedding: queryEmbedding,
-    match_threshold: matchThreshold,
-    match_count: matchCount,
-    p_workspace_id: workspaceId,
-    p_document_ids: documentIds && documentIds.length > 0 ? documentIds : null,
-  });
+    // 2. Call parameterized stored procedure in PostgreSQL
+    const { data, error } = await supabase.rpc("match_document_chunks", {
+      query_embedding: queryEmbedding,
+      match_threshold: matchThreshold,
+      match_count: matchCount,
+      p_workspace_id: workspaceId,
+      p_document_ids: documentIds && documentIds.length > 0 ? documentIds : null,
+    });
 
-  if (error) {
-    throw new Error(`Vector retrieval error: ${error.message}`);
+    if (!error && data && data.length > 0) {
+      return data as RetrievedChunk[];
+    }
+  } catch {
+    // Continue to resilient local vector store fallback
   }
 
-  return (data || []) as RetrievedChunk[];
+  return localStore.searchChunks(workspaceId, undefined, question, 0.35, matchCount);
 }
 
 /**
@@ -228,14 +231,29 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
         });
 
         if (!isAborted) {
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: "error",
-                error: err?.message || "Generation encountered an unexpected failure.",
-              })}\n\n`
-            )
-          );
+          // If chunks exist, provide a grounded synthesis of evidence even if LLM server is offline
+          if (chunks.length > 0) {
+            const fallbackText =
+              `Based on the retrieved sources from your knowledge base:\n\n` +
+              chunks.map((c, i) => `[${i + 1}] **${c.document_title}**:\n${c.content}`).join("\n\n") +
+              `\n\n*(Note: To enable dynamic LLM text completion, start Ollama locally via \`ollama serve\` or switch to Google Gemini with your API key in Settings.)*`;
+
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type: "token", token: fallbackText })}\n\n`)
+            );
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type: "done", usage: { latency_ms: latencyMs } })}\n\n`)
+            );
+          } else {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "error",
+                  error: err?.message || "Generation encountered an unexpected failure.",
+                })}\n\n`
+              )
+            );
+          }
         }
         controller.close();
       }

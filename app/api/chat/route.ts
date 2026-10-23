@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { executeRAGStream } from "@/services/rag-service";
 import { createClient } from "@/lib/supabase/server";
 
-export const dynamic = "force-dynamic";
-
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();

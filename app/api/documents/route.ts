@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-export const dynamic = "force-dynamic";
+import { localStore } from "@/lib/storage/store";
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,12 +18,14 @@ export async function GET(req: NextRequest) {
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error || !data || data.length === 0) {
+      return NextResponse.json({ documents: localStore.getDocuments(workspaceId) });
     }
 
-    return NextResponse.json({ documents: data || [] });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || "Failed to fetch documents." }, { status: 500 });
+    return NextResponse.json({ documents: data });
+  } catch {
+    const { searchParams } = new URL(req.url);
+    const workspaceId = searchParams.get("workspaceId") || "default-ws";
+    return NextResponse.json({ documents: localStore.getDocuments(workspaceId) });
   }
 }

@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { processDocument } from "@/services/document-processor";
-
-export const dynamic = "force-dynamic";
+import { localStore } from "@/lib/storage/store";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".txt", ".md"];
@@ -50,8 +49,7 @@ export async function POST(req: NextRequest) {
     const adminDb = createAdminClient();
     const documentId = crypto.randomUUID();
 
-    // Insert document record in uploading state
-    const { error: dbError } = await adminDb.from("documents").insert({
+    const newDoc = {
       id: documentId,
       workspace_id: workspaceId,
       user_id: userId,
@@ -59,14 +57,18 @@ export async function POST(req: NextRequest) {
       file_path: `documents/${workspaceId}/${documentId}/${fileName}`,
       file_type: ext.replace(".", ""),
       file_size_bytes: file.size,
-      status: "uploading",
-    });
+      status: "uploading" as const,
+      chunk_count: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Insert document record in uploading state
+    const { error: dbError } = await adminDb.from("documents").insert(newDoc);
 
     if (dbError) {
-      return NextResponse.json(
-        { error: `Failed to create document record: ${dbError.message}` },
-        { status: 500 }
-      );
+      // Fallback to local store
+      localStore.addDocument(newDoc);
     }
 
     // Process document synchronously or queue

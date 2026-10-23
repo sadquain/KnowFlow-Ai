@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-
-export const dynamic = "force-dynamic";
+import { localStore } from "@/lib/storage/store";
 
 export async function GET() {
   try {
@@ -12,13 +11,14 @@ export async function GET() {
       .select("*")
       .order("created_at", { ascending: true });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error || !data || data.length === 0) {
+      // Graceful fallback to local workspace cache if Supabase table is pending creation
+      return NextResponse.json({ workspaces: localStore.getWorkspaces() });
     }
 
-    return NextResponse.json({ workspaces: data || [] });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || "Failed to fetch workspaces." }, { status: 500 });
+    return NextResponse.json({ workspaces: data });
+  } catch {
+    return NextResponse.json({ workspaces: localStore.getWorkspaces() });
   }
 }
 

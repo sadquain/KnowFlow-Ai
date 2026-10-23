@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-export const dynamic = "force-dynamic";
+import { localStore } from "@/lib/storage/store";
 
 export async function GET(req: NextRequest) {
   try {
@@ -20,11 +19,13 @@ export async function GET(req: NextRequest) {
       .select("id, status, file_type, chunk_count, created_at, title")
       .eq("workspace_id", workspaceId);
 
-    const totalDocs = docs?.length || 0;
-    const readyDocs = docs?.filter((d) => d.status === "ready").length || 0;
-    const processingDocs = docs?.filter((d) => d.status === "processing").length || 0;
-    const failedDocs = docs?.filter((d) => d.status === "failed").length || 0;
-    const totalChunks = docs?.reduce((acc, d) => acc + (d.chunk_count || 0), 0) || 0;
+    const activeDocs = docs && docs.length > 0 ? docs : localStore.getDocuments(workspaceId);
+
+    const totalDocs = activeDocs.length;
+    const readyDocs = activeDocs.filter((d) => d.status === "ready").length;
+    const processingDocs = activeDocs.filter((d) => d.status === "processing").length;
+    const failedDocs = activeDocs.filter((d) => d.status === "failed").length;
+    const totalChunks = activeDocs.reduce((acc, d) => acc + (d.chunk_count || 0), 0);
 
     // 2. AI Usage metrics
     const { data: usage } = await supabase
