@@ -9,8 +9,13 @@ export async function POST(req: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Authenticated user check or anonymous demo user fallback for evaluation
-    const userId = user?.id || "demo-user-id";
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized. Please sign in to send messages." },
+        { status: 401 }
+      );
+    }
+    const userId = user.id;
 
     const body = await req.json();
     const { question, workspaceId, documentIds, conversationId, provider, model } = body;
@@ -49,10 +54,8 @@ export async function POST(req: NextRequest) {
         "X-Accel-Buffering": "no",
       },
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "Internal server error during chat processing." },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal server error during chat processing.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -2,7 +2,7 @@
 
 import React from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X, BookOpen, Layers, CheckCircle2 } from "lucide-react";
+import { X, BookOpen, CheckCircle2 } from "lucide-react";
 import type { GroundedCitation } from "@/lib/ai/types";
 
 interface CitationPreviewDrawerProps {

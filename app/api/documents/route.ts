@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { localStore } from "@/lib/storage/store";
 
 export async function GET(req: NextRequest) {
   try {
@@ -8,7 +7,7 @@ export async function GET(req: NextRequest) {
     const workspaceId = searchParams.get("workspaceId");
 
     if (!workspaceId) {
-      return NextResponse.json({ error: "Missing workspaceId." }, { status: 400 });
+      return NextResponse.json({ error: "Missing workspaceId query parameter." }, { status: 400 });
     }
 
     const supabase = createAdminClient();
@@ -18,14 +17,14 @@ export async function GET(req: NextRequest) {
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false });
 
-    if (error || !data || data.length === 0) {
-      return NextResponse.json({ documents: localStore.getDocuments(workspaceId) });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ documents: data });
-  } catch {
-    const { searchParams } = new URL(req.url);
-    const workspaceId = searchParams.get("workspaceId") || "default-ws";
-    return NextResponse.json({ documents: localStore.getDocuments(workspaceId) });
+    // Return empty array if no documents exist in this workspace; never fake or seeded data
+    return NextResponse.json({ documents: data || [] });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to fetch documents.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

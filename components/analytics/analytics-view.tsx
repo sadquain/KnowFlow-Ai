@@ -15,7 +15,7 @@ import {
   Legend,
 } from "recharts";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { FileText, BotMessageSquare, Clock, CheckCircle2, AlertTriangle, Layers } from "lucide-react";
+import { FileText, BotMessageSquare, Clock, Layers } from "lucide-react";
 
 interface AnalyticsMetrics {
   totalDocuments: number;
@@ -31,12 +31,12 @@ interface AnalyticsMetrics {
 
 interface AnalyticsViewProps {
   metrics: AnalyticsMetrics;
-  recentUsage: any[];
+  recentUsage?: unknown[];
 }
 
 const PIE_COLORS = ["#10B981", "#06B6D4", "#EF4444"];
 
-export function AnalyticsView({ metrics, recentUsage }: AnalyticsViewProps) {
+export function AnalyticsView({ metrics }: AnalyticsViewProps) {
   const documentStatusData = [
     { name: "Ready", value: metrics.readyDocuments },
     { name: "Processing", value: metrics.processingDocuments },
