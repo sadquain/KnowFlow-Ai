@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Menu, Terminal, LogOut, LogIn } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { AuthModal } from "@/components/auth/auth-modal";
+import { useWorkspace } from "@/components/providers/workspace-provider";
 import type { User } from "@supabase/supabase-js";
 
 interface HeaderProps {
@@ -12,6 +13,7 @@ interface HeaderProps {
 }
 
 export function Header({ onToggleSidebar, activeProvider = "gemini" }: HeaderProps) {
+  const { currentWorkspace } = useWorkspace();
   const [user, setUser] = useState<User | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
@@ -61,7 +63,9 @@ export function Header({ onToggleSidebar, activeProvider = "gemini" }: HeaderPro
 
         <div className="hidden sm:block">
           <span className="text-xs font-medium text-slate-400">Workspace / </span>
-          <span className="text-xs font-semibold text-slate-700">Production Knowledge Base</span>
+          <span className="text-xs font-semibold text-slate-700">
+            {currentWorkspace?.name || "Workspace"}
+          </span>
         </div>
       </div>
 

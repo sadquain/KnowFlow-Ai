@@ -13,6 +13,7 @@ import {
   Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useWorkspace } from "@/components/providers/workspace-provider";
 
 interface SidebarProps {
   currentWorkspaceId?: string;
@@ -20,37 +21,39 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-export function Sidebar({ currentWorkspaceId = "default-ws", isOpen, onClose }: SidebarProps) {
+export function Sidebar({ currentWorkspaceId, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { currentWorkspace, workspaceId } = useWorkspace();
+  const activeWsId = workspaceId || currentWorkspaceId || "";
 
   const navItems = [
     {
       label: "Dashboard",
-      href: `/dashboard?ws=${currentWorkspaceId}`,
+      href: `/dashboard${activeWsId ? `?ws=${activeWsId}` : ""}`,
       icon: LayoutDashboard,
       activePattern: /^\/dashboard/,
     },
     {
       label: "AI Assistant",
-      href: `/chat?ws=${currentWorkspaceId}`,
+      href: `/chat${activeWsId ? `?ws=${activeWsId}` : ""}`,
       icon: BotMessageSquare,
       activePattern: /^\/chat/,
     },
     {
       label: "Documents",
-      href: `/documents?ws=${currentWorkspaceId}`,
+      href: `/documents${activeWsId ? `?ws=${activeWsId}` : ""}`,
       icon: FileText,
       activePattern: /^\/documents/,
     },
     {
       label: "Analytics",
-      href: `/analytics?ws=${currentWorkspaceId}`,
+      href: `/analytics${activeWsId ? `?ws=${activeWsId}` : ""}`,
       icon: BarChart3,
       activePattern: /^\/analytics/,
     },
     {
       label: "Settings",
-      href: `/settings?ws=${currentWorkspaceId}`,
+      href: `/settings${activeWsId ? `?ws=${activeWsId}` : ""}`,
       icon: Settings,
       activePattern: /^\/settings/,
     },
@@ -96,8 +99,10 @@ export function Sidebar({ currentWorkspaceId = "default-ws", isOpen, onClose }: 
               <Layers className="h-3.5 w-3.5" />
             </div>
             <div className="flex-1 truncate">
-              <p className="font-semibold text-slate-800">Primary Workspace</p>
-              <p className="text-[10px] text-slate-500">Free Tier · pgvector active</p>
+              <p className="font-semibold text-slate-800 truncate">
+                {currentWorkspace?.name || "Workspace"}
+              </p>
+              <p className="text-[10px] text-slate-500">pgvector · RLS active</p>
             </div>
           </div>
         </div>

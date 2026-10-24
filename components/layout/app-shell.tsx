@@ -3,19 +3,21 @@
 import React, { useState } from "react";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { Header } from "@/components/navigation/header";
+import { WorkspaceProvider, useWorkspace } from "@/components/providers/workspace-provider";
 
 interface AppShellProps {
   children: React.ReactNode;
   workspaceId?: string;
 }
 
-export function AppShell({ children, workspaceId = "default-ws" }: AppShellProps) {
+function AppShellInner({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { workspaceId } = useWorkspace();
 
   return (
     <div className="min-h-screen bg-slate-50">
       <Sidebar
-        currentWorkspaceId={workspaceId}
+        currentWorkspaceId={workspaceId || undefined}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -27,5 +29,13 @@ export function AppShell({ children, workspaceId = "default-ws" }: AppShellProps
         </main>
       </div>
     </div>
+  );
+}
+
+export function AppShell({ children }: AppShellProps) {
+  return (
+    <WorkspaceProvider>
+      <AppShellInner>{children}</AppShellInner>
+    </WorkspaceProvider>
   );
 }

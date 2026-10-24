@@ -34,6 +34,31 @@ export async function GET() {
       return NextResponse.json({ error: "Failed to fetch workspaces." }, { status: 500 });
     }
 
+    if (!workspaces || workspaces.length === 0) {
+      // Auto-provision initial workspace for user so every authenticated user has a real workspace
+      const initialName = "My Workspace";
+      const slug = `ws-${user.id.substring(0, 8)}-${Math.random().toString(36).substring(2, 6)}`;
+      const { data: initialWs, error: createError } = await supabase
+        .from("workspaces")
+        .insert({
+          name: initialName,
+          slug,
+          owner_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (!createError && initialWs) {
+        const adminDb = createAdminClient();
+        await adminDb.from("workspace_members").insert({
+          workspace_id: initialWs.id,
+          user_id: user.id,
+          role: "owner",
+        });
+        return NextResponse.json({ workspaces: [initialWs] });
+      }
+    }
+
     return NextResponse.json({ workspaces: workspaces || [] });
   } catch (err: unknown) {
     if (typeof err === "object" && err !== null && "statusCode" in err) {
