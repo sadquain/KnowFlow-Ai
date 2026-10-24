@@ -1,6 +1,6 @@
 import mammoth from "mammoth";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import { getEmbeddingModel } from "@/lib/ai/factory";
+import { getEmbeddingModel, getProviderConfig } from "@/lib/ai/factory";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export interface ExtractedPage {
@@ -150,7 +150,8 @@ export async function processDocument(
       throw new Error(`Failed to clean up existing chunks: ${deleteError.message}`);
     }
 
-    // 6. Bulk insert chunks with vector embeddings
+    // 6. Bulk insert chunks with vector embeddings and model name
+    const config = getProviderConfig();
     const chunksPayload = splitDocs.map((doc, index) => ({
       id: crypto.randomUUID(),
       document_id: documentId,
@@ -163,6 +164,7 @@ export async function processDocument(
         page_number: doc.metadata?.pageNumber || index + 1,
       },
       embedding: vectors[index],
+      embedding_model: config.embedModelName,
       created_at: new Date().toISOString(),
     }));
 
@@ -180,6 +182,7 @@ export async function processDocument(
       .update({
         status: "ready",
         chunk_count: splitDocs.length,
+        embedding_model: config.embedModelName,
         error_message: null,
         updated_at: new Date().toISOString(),
       })
