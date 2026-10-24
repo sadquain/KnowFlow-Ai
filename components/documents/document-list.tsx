@@ -82,7 +82,7 @@ export function DocumentList({
       {/* Filtered Out State */}
       {!isLoading && documents.length > 0 && filteredDocs.length === 0 && (
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">
-          No documents found matching "{searchQuery}".
+          No documents found matching &ldquo;{searchQuery}&rdquo;.
         </div>
       )}
 

@@ -2,8 +2,7 @@ import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { getChatModel, getEmbeddingModel, getProviderConfig } from "@/lib/ai/factory";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEMO_USER_ID } from "@/lib/auth";
-import type { RetrievedChunk, GroundedCitation, SupportedAIProvider } from "@/lib/ai/types";
+import type { RetrievedChunk, GroundedCitation, SupportedAIProvider, SupportedEmbeddingProvider } from "@/lib/ai/types";
 
 export interface RAGQueryOptions {
   question: string;
@@ -53,7 +52,6 @@ export function sanitizeQuestion(question: string): string {
   return trimmed;
 }
 
-import { localStore } from "@/lib/storage/store";
 
 export async function retrieveRelevantChunks(
   question: string,
@@ -69,7 +67,7 @@ export async function retrieveRelevantChunks(
     
     let embeddingModel;
     try {
-      embeddingModel = getEmbeddingModel(embedProvider as any);
+      embeddingModel = getEmbeddingModel(embedProvider as SupportedEmbeddingProvider);
     } catch {
       embeddingModel = getEmbeddingModel(process.env.GEMINI_API_KEY ? "gemini" : "ollama");
     }
@@ -86,14 +84,16 @@ export async function retrieveRelevantChunks(
       p_document_ids: documentIds && documentIds.length > 0 ? documentIds : null,
     });
 
-    if (!error && data && data.length > 0) {
-      return data as RetrievedChunk[];
+    if (error) {
+      console.error("[rag-service] match_document_chunks RPC error:", error);
+      throw new Error(`Vector search failed: ${error.message}`);
     }
-  } catch {
-    // Continue to resilient local vector store fallback
-  }
 
-  return localStore.searchChunks(workspaceId, undefined, question, 0.35, matchCount);
+    return (data || []) as RetrievedChunk[];
+  } catch (err: unknown) {
+    console.error("[rag-service] Error retrieving chunks:", err);
+    throw err;
+  }
 }
 
 /**
@@ -104,7 +104,10 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
   const cleanQuestion = sanitizeQuestion(options.question);
   const config = getProviderConfig();
   const supabase = createAdminClient();
-  const validUserId = options.userId && options.userId !== "demo-user-id" ? options.userId : DEMO_USER_ID;
+  if (!options.userId) {
+    throw new Error("userId is required to execute a RAG query and persist conversation state.");
+  }
+  const validUserId = options.userId;
 
   const activeProvider = options.provider || config.aiProvider;
   const activeModel =
@@ -140,18 +143,8 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
       role: "user",
       content: cleanQuestion,
     });
-  } catch {
-    if (!localStore.getConversation(convId)) {
-      localStore.createConversation(options.workspaceId, validUserId, cleanQuestion.slice(0, 45));
-    }
-    localStore.addMessage({
-      id: crypto.randomUUID(),
-      conversation_id: convId,
-      workspace_id: options.workspaceId,
-      role: "user",
-      content: cleanQuestion,
-      created_at: new Date().toISOString(),
-    });
+  } catch (err) {
+    console.error("[rag-service] Error recording conversation/message in DB:", err);
   }
 
   // 1. Retrieve evidence chunks
@@ -298,16 +291,8 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
               await supabase.from("message_sources").insert(sourcesToInsert);
             }
           }
-        } catch {
-          localStore.addMessage({
-            id: crypto.randomUUID(),
-            conversation_id: convId,
-            workspace_id: options.workspaceId,
-            role: "assistant",
-            content: fullText,
-            citations,
-            created_at: new Date().toISOString(),
-          });
+        } catch (err) {
+          console.error("[rag-service] Error persisting completed assistant message:", err);
         }
 
         // Final event: Done
@@ -332,9 +317,11 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
         });
 
         controller.close();
-      } catch (err: any) {
+      } catch (err: unknown) {
         const isAborted = options.abortSignal?.aborted;
         const latencyMs = Date.now() - startTime;
+        const errorMessage = err instanceof Error ? err.message : String(err || "Unknown generation failure");
+        const errorCode = typeof err === "object" && err !== null && "code" in err ? String((err as { code: unknown }).code) : undefined;
 
         await supabase.from("ai_usage").insert({
           workspace_id: options.workspaceId,
@@ -343,53 +330,28 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
           model: activeModel,
           latency_ms: latencyMs,
           status: isAborted ? "cancelled" : "failed",
-          error_code: err?.message?.slice(0, 100),
+          error_code: errorMessage.slice(0, 100),
         });
 
         if (!isAborted) {
           const isOllamaConnError =
             activeProvider === "ollama" &&
-            (err?.message?.includes("fetch failed") ||
-              err?.message?.includes("ECONNREFUSED") ||
-              err?.code === "ECONNREFUSED");
+            (errorMessage.includes("fetch failed") ||
+              errorMessage.includes("ECONNREFUSED") ||
+              errorCode === "ECONNREFUSED");
 
-          // If chunks exist, provide a grounded synthesis of evidence even if LLM server is offline
-          if (chunks.length > 0) {
-            const guidanceNote = isOllamaConnError
-              ? `*(Note: Ollama is not running on \`http://localhost:11434\`. You can start it via \`ollama serve\` or switch to **Google Gemini** or **Groq** in the model selector above for instant cloud inference.)*`
-              : `*(Note: Provider \`${activeProvider}\` encountered an error: ${err?.message || "Connection issue"}. You can switch to Gemini or Groq above.)*`;
+          const userError = isOllamaConnError
+            ? "Could not connect to Ollama at http://localhost:11434. Please ensure Ollama is running (`ollama serve`), or switch to Google Gemini or Groq using the model selector above."
+            : `Provider \`${activeProvider}\` encountered an error: ${errorMessage}`;
 
-            const fallbackText =
-              `Based on the retrieved sources from your knowledge base:\n\n` +
-              chunks.map((c, i) => `[${i + 1}] **${c.document_title}**:\n${c.content}`).join("\n\n") +
-              `\n\n${guidanceNote}`;
-
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ type: "token", token: fallbackText })}\n\n`)
-            );
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: "done",
-                  conversationId: convId,
-                  usage: { latency_ms: latencyMs },
-                })}\n\n`
-              )
-            );
-          } else {
-            const userError = isOllamaConnError
-              ? "Could not connect to Ollama at http://localhost:11434. Please ensure Ollama is running, or switch to Google Gemini or Groq using the model selector above."
-              : err?.message || "Generation encountered an unexpected failure.";
-
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: "error",
-                  error: userError,
-                })}\n\n`
-              )
-            );
-          }
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: "error",
+                error: userError,
+              })}\n\n`
+            )
+          );
         }
         controller.close();
       }

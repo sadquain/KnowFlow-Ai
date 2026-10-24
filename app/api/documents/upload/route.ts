@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { processDocument } from "@/services/document-processor";
-import { localStore } from "@/lib/storage/store";
-import { DEMO_USER_ID } from "@/lib/auth";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".txt", ".md"];
@@ -15,7 +13,13 @@ export async function POST(req: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const userId = user?.id || DEMO_USER_ID;
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized. Please sign in to upload documents." },
+        { status: 401 }
+      );
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const workspaceId = formData.get("workspaceId") as string | null;
@@ -49,23 +53,24 @@ export async function POST(req: NextRequest) {
 
     const adminDb = createAdminClient();
     const documentId = crypto.randomUUID();
-
     const filePath = `${workspaceId}/${documentId}/${fileName}`;
 
     // Upload raw binary file to Supabase Storage bucket
-    try {
-      await adminDb.storage.from("documents").upload(filePath, buffer, {
+    const { error: storageError } = await adminDb.storage
+      .from("documents")
+      .upload(filePath, buffer, {
         contentType: file.type || "application/octet-stream",
         upsert: true,
       });
-    } catch {
-      // Non-blocking storage upload
+
+    if (storageError) {
+      console.warn("[upload] Storage bucket warning:", storageError.message);
     }
 
     const newDoc = {
       id: documentId,
       workspace_id: workspaceId,
-      user_id: userId,
+      user_id: user.id,
       title: fileName,
       file_path: filePath,
       file_type: ext.replace(".", ""),
@@ -78,13 +83,14 @@ export async function POST(req: NextRequest) {
 
     // Insert document record in uploading state
     const { error: dbError } = await adminDb.from("documents").insert(newDoc);
-
     if (dbError) {
-      // Fallback to local store
-      localStore.addDocument(newDoc);
+      return NextResponse.json(
+        { error: `Failed to register document: ${dbError.message}` },
+        { status: 500 }
+      );
     }
 
-    // Process document synchronously or queue
+    // Process document synchronously
     const result = await processDocument(
       documentId,
       workspaceId,
@@ -99,10 +105,8 @@ export async function POST(req: NextRequest) {
       chunkCount: result.chunkCount,
       error: result.error,
     });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err?.message || "Failed to upload document." },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to upload document.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

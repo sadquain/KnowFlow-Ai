@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { localStore } from "@/lib/storage/store";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -18,18 +17,36 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       .eq("conversation_id", id)
       .order("created_at", { ascending: true });
 
-    if (error || !messages) {
-      // Fallback to localStore
-      const fallbackMsgs = localStore.getMessages(id);
-      return NextResponse.json({ messages: fallbackMsgs });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const mappedMessages = messages.map((m: any) => ({
+    if (!messages || messages.length === 0) {
+      return NextResponse.json({ messages: [] });
+    }
+
+    interface DBMessageSource {
+      document_id: string;
+      chunk_id?: string;
+      snippet: string;
+      page_number?: number;
+      similarity_score?: number;
+    }
+
+    interface DBMessage {
+      id: string;
+      role: "user" | "assistant";
+      content: string;
+      created_at: string;
+      message_sources?: DBMessageSource[];
+    }
+
+    const mappedMessages = (messages as unknown as DBMessage[]).map((m) => ({
       id: m.id,
       role: m.role,
       content: m.content,
       created_at: m.created_at,
-      citations: (m.message_sources || []).map((s: any, idx: number) => ({
+      citations: (m.message_sources || []).map((s, idx: number) => ({
         id: `cite-${idx + 1}`,
         document_id: s.document_id,
         document_title: "Source Document",
@@ -41,11 +58,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     }));
 
     return NextResponse.json({ messages: mappedMessages });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err?.message || "Failed to load conversation messages." },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to load conversation messages.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -54,14 +69,15 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const supabase = createAdminClient();
 
-    await supabase.from("conversations").delete().eq("id", id);
-    localStore.deleteConversation(id);
+    // Delete associated message_sources, messages, and conversation
+    const { error } = await supabase.from("conversations").delete().eq("id", id);
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true, deletedId: id });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err?.message || "Failed to delete conversation." },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to delete conversation.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
