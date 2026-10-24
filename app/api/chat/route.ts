@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { executeRAGStream } from "@/services/rag-service";
-import { createClient } from "@/lib/supabase/server";
+import { requireWorkspaceMember, requireConversationAccess } from "@/lib/auth/require-workspace-member";
+import { AuthError } from "@/lib/auth/require-user";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized. Please sign in to send messages." },
-        { status: 401 }
-      );
-    }
-    const userId = user.id;
-
     const body = await req.json();
     const { question, workspaceId, documentIds, conversationId, provider, model } = body;
 
@@ -34,11 +23,43 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Execute RAG LangChain pipeline
+    // 1. Verify caller is authenticated and belongs to the workspace
+    const { user } = await requireWorkspaceMember(workspaceId);
+
+    // 2. If conversationId is supplied, verify caller has access to it
+    if (conversationId) {
+      await requireConversationAccess(conversationId, workspaceId);
+    }
+
+    // 3. If documentIds are specified, verify they belong to this workspace
+    if (Array.isArray(documentIds) && documentIds.length > 0) {
+      const adminDb = createAdminClient();
+      const { data: validDocs, error: docCheckError } = await adminDb
+        .from("documents")
+        .select("id")
+        .eq("workspace_id", workspaceId)
+        .in("id", documentIds);
+
+      if (docCheckError) {
+        console.error("[POST /api/chat] Document verification error:", docCheckError);
+        return NextResponse.json({ error: "Failed to verify document access." }, { status: 500 });
+      }
+
+      const validDocIds = new Set((validDocs || []).map((d) => d.id));
+      const hasInvalidDoc = documentIds.some((id: string) => !validDocIds.has(id));
+      if (hasInvalidDoc) {
+        return NextResponse.json(
+          { error: "One or more requested documents do not belong to this workspace." },
+          { status: 403 }
+        );
+      }
+    }
+
+    // 4. Execute RAG LangChain pipeline with verified session user.id
     const { stream } = await executeRAGStream({
       question,
       workspaceId,
-      userId,
+      userId: user.id, // Strictly derived from auth session
       documentIds,
       conversationId,
       provider,
@@ -55,7 +76,12 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error during chat processing.";
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
+    const message =
+      error instanceof Error ? error.message : "Internal server error during chat processing.";
+    console.error("[POST /api/chat] Unexpected error:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
