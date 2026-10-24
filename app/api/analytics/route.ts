@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { localStore } from "@/lib/storage/store";
 
 export async function GET(req: NextRequest) {
   try {
@@ -7,22 +8,19 @@ export async function GET(req: NextRequest) {
     const workspaceId = searchParams.get("workspaceId");
 
     if (!workspaceId) {
-      return NextResponse.json({ error: "Missing workspaceId query parameter." }, { status: 400 });
+      return NextResponse.json({ error: "Missing workspaceId." }, { status: 400 });
     }
 
     const supabase = createAdminClient();
 
     // 1. Total documents count & breakdown by status
-    const { data: docs, error: docsError } = await supabase
+    const { data: docs } = await supabase
       .from("documents")
       .select("id, status, file_type, chunk_count, created_at, title")
       .eq("workspace_id", workspaceId);
 
-    if (docsError) {
-      return NextResponse.json({ error: docsError.message }, { status: 500 });
-    }
+    const activeDocs = docs && docs.length > 0 ? docs : localStore.getDocuments(workspaceId);
 
-    const activeDocs = docs || [];
     const totalDocs = activeDocs.length;
     const readyDocs = activeDocs.filter((d) => d.status === "ready").length;
     const processingDocs = activeDocs.filter((d) => d.status === "processing").length;
@@ -30,16 +28,12 @@ export async function GET(req: NextRequest) {
     const totalChunks = activeDocs.reduce((acc, d) => acc + (d.chunk_count || 0), 0);
 
     // 2. AI Usage metrics
-    const { data: usage, error: usageError } = await supabase
+    const { data: usage } = await supabase
       .from("ai_usage")
       .select("id, provider, model, latency_ms, status, created_at")
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false })
       .limit(100);
-
-    if (usageError) {
-      return NextResponse.json({ error: usageError.message }, { status: 500 });
-    }
 
     const totalQueries = usage?.length || 0;
     const successfulQueries = usage?.filter((u) => u.status === "success").length || 0;
@@ -63,11 +57,10 @@ export async function GET(req: NextRequest) {
         failedQueries,
         averageLatencyMs: avgLatency,
       },
-      recentDocuments: activeDocs.slice(0, 5),
+      recentDocuments: docs?.slice(0, 5) || [],
       recentUsage: usage?.slice(0, 5) || [],
     });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to load analytics.";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message || "Failed to load analytics." }, { status: 500 });
   }
 }

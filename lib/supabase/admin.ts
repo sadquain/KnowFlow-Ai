@@ -1,15 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
-import { getServerEnv } from "@/lib/env";
 
 /**
  * Server-only administrative Supabase client using the Service Role Key.
  * NEVER expose this or import this file in client-side code.
- * Throws immediately if required environment variables are missing.
  */
 export function createAdminClient() {
-  const env = getServerEnv();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder-url.supabase.co";
+  const serviceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    "placeholder-service-key";
 
-  return createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  return createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

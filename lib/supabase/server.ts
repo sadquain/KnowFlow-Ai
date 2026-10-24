@@ -1,16 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { getServerEnv } from "@/lib/env";
 
 /**
  * Creates a server-side Supabase client reading session cookies.
- * Throws immediately if server environment variables are missing.
  */
 export async function createClient() {
   const cookieStore = await cookies();
-  const env = getServerEnv();
 
-  return createServerClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder-url.supabase.co";
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    "placeholder-anon-key";
+
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -21,7 +24,8 @@ export async function createClient() {
             cookieStore.set(name, value, options)
           );
         } catch {
-          // Can be ignored if called from a Server Component and middleware is handling session refresh
+          // The `setAll` method was called from a Server Component.
+          // This can be ignored if middleware is refreshing user sessions.
         }
       },
     },

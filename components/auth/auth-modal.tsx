@@ -1,15 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Lock, Mail, User } from "lucide-react";
+import { X, Lock, Mail, User, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-
-import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (user: SupabaseUser) => void;
+  onSuccess: (user: any) => void;
 }
 
 export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
@@ -42,9 +40,9 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
         });
         if (signUpError) throw signUpError;
         if (data.user) {
-          setMessage("Account created! Please check your email or proceed to sign in.");
+          setMessage("Account created! You are now signed in.");
           onSuccess(data.user);
-          setTimeout(() => onClose(), 1200);
+          setTimeout(() => onClose(), 1000);
         }
       } else {
         const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -58,12 +56,16 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           setTimeout(() => onClose(), 800);
         }
       }
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Authentication failed.";
-      setError(errorMsg);
+    } catch (err: any) {
+      setError(err?.message || "Authentication failed.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDemoLogin = () => {
+    setEmail("demo@knowflow.ai");
+    setPassword("KnowFlowDemoPassword2025!");
   };
 
   return (
@@ -168,7 +170,16 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           </button>
         </form>
 
-        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end text-xs">
+        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+          <button
+            type="button"
+            onClick={handleDemoLogin}
+            className="text-xs text-slate-600 hover:text-blue-600 flex items-center gap-1 font-medium"
+          >
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+            <span>Use Demo Account</span>
+          </button>
+
           <button
             type="button"
             onClick={() => {

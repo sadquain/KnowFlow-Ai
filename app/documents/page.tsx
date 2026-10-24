@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { DocumentList } from "@/components/documents/document-list";
 import { DocumentUploadModal } from "@/components/documents/document-upload-modal";
@@ -13,8 +13,9 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchDocuments = useCallback(async () => {
+  const fetchDocuments = async () => {
     try {
+      setIsLoading(true);
       const res = await fetch(`/api/documents?workspaceId=${workspaceId}`);
       if (res.ok) {
         const data = await res.json();
@@ -25,29 +26,10 @@ export default function DocumentsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [workspaceId]);
+  };
 
   useEffect(() => {
-    let ignore = false;
-    async function loadDocs() {
-      try {
-        const res = await fetch(`/api/documents?workspaceId=${workspaceId}`);
-        if (res.ok && !ignore) {
-          const data = await res.json();
-          setDocuments(data.documents || []);
-        }
-      } catch {
-        // Handled
-      } finally {
-        if (!ignore) {
-          setIsLoading(false);
-        }
-      }
-    }
-    loadDocs();
-    return () => {
-      ignore = true;
-    };
+    fetchDocuments();
   }, [workspaceId]);
 
   const handleDelete = async (id: string) => {

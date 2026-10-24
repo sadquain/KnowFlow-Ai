@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { DashboardHero } from "@/components/dashboard/hero";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -21,14 +21,17 @@ export default function DashboardPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = async () => {
     try {
+      setIsLoading(true);
+      // Fetch documents
       const docsRes = await fetch(`/api/documents?workspaceId=${workspaceId}`);
       if (docsRes.ok) {
         const docsData = await docsRes.json();
         setDocuments(docsData.documents || []);
       }
 
+      // Fetch analytics
       const analyticsRes = await fetch(`/api/analytics?workspaceId=${workspaceId}`);
       if (analyticsRes.ok) {
         const analyticsData = await analyticsRes.json();
@@ -41,37 +44,10 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [workspaceId]);
+  };
 
   useEffect(() => {
-    let ignore = false;
-    async function loadData() {
-      try {
-        const docsRes = await fetch(`/api/documents?workspaceId=${workspaceId}`);
-        if (docsRes.ok && !ignore) {
-          const docsData = await docsRes.json();
-          setDocuments(docsData.documents || []);
-        }
-
-        const analyticsRes = await fetch(`/api/analytics?workspaceId=${workspaceId}`);
-        if (analyticsRes.ok && !ignore) {
-          const analyticsData = await analyticsRes.json();
-          if (analyticsData.metrics) {
-            setMetrics(analyticsData.metrics);
-          }
-        }
-      } catch {
-        // Keep initial states
-      } finally {
-        if (!ignore) {
-          setIsLoading(false);
-        }
-      }
-    }
-    loadData();
-    return () => {
-      ignore = true;
-    };
+    fetchDashboardData();
   }, [workspaceId]);
 
   const handleDeleteDocument = async (id: string) => {
@@ -155,7 +131,7 @@ export default function DashboardPage() {
               </div>
             ) : documents.length === 0 ? (
               <div className="py-10 text-center text-xs text-slate-400">
-                No documents uploaded yet. Click &ldquo;Upload documents&rdquo; above to add your first file.
+                No documents uploaded yet. Click "Upload documents" above to add your first file.
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -86,9 +86,8 @@ export function DocumentUploadModal({
         onClose();
         setSuccessMsg(null);
       }, 1500);
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Failed to upload document.";
-      setError(errorMsg);
+    } catch (err: any) {
+      setError(err?.message || "Failed to upload document.");
     } finally {
       setIsUploading(false);
     }

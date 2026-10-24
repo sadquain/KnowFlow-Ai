@@ -5,15 +5,6 @@ import { AppShell } from "@/components/layout/app-shell";
 import { AnalyticsView } from "@/components/analytics/analytics-view";
 import { BarChart3 } from "lucide-react";
 
-interface UsageRecord {
-  id: string;
-  provider: string;
-  model: string;
-  latency_ms: number;
-  status: string;
-  created_at: string;
-}
-
 export default function AnalyticsPage() {
   const [workspaceId] = useState("default-ws");
   const [metrics, setMetrics] = useState({
@@ -27,7 +18,7 @@ export default function AnalyticsPage() {
     failedQueries: 0,
     averageLatencyMs: 0,
   });
-  const [recentUsage, setRecentUsage] = useState<UsageRecord[]>([]);
+  const [recentUsage, setRecentUsage] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchAnalytics = async () => {

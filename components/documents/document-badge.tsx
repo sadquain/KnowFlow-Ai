@@ -1,5 +1,6 @@
 import React from "react";
 import { CheckCircle2, Clock, AlertTriangle, FileCode, FileText, File } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DocumentStatusBadgeProps {
   status: "uploading" | "processing" | "ready" | "failed";

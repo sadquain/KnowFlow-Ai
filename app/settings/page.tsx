@@ -2,7 +2,7 @@
 
 import React from "react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Settings, Shield, Cpu, Database, CheckCircle2 } from "lucide-react";
+import { Settings, Shield, Cpu, Database, CheckCircle2, Info } from "lucide-react";
 
 export default function SettingsPage() {
   return (

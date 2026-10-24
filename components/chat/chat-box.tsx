@@ -21,20 +21,8 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
   const [liveAnnouncement, setLiveAnnouncement] = useState("");
 
   // Model & Provider Selection
-  const [selectedProvider, setSelectedProvider] = useState<SupportedAIProvider>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("knowflow_ai_provider");
-      if (saved === "gemini" || saved === "groq" || saved === "ollama") return saved;
-    }
-    return "gemini";
-  });
-  const [selectedModel, setSelectedModel] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("knowflow_ai_model");
-      if (saved) return saved;
-    }
-    return "gemini-3.8-flash";
-  });
+  const [selectedProvider, setSelectedProvider] = useState<SupportedAIProvider>("gemini");
+  const [selectedModel, setSelectedModel] = useState<string>("gemini-3.8-flash");
 
   // Conversation Threads & Persistence
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined);
@@ -43,6 +31,22 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Restore saved provider & model from localStorage
+  useEffect(() => {
+    try {
+      const savedProvider = localStorage.getItem("knowflow_ai_provider") as SupportedAIProvider | null;
+      const savedModel = localStorage.getItem("knowflow_ai_model");
+      if (savedProvider) {
+        setSelectedProvider(savedProvider);
+      }
+      if (savedModel) {
+        setSelectedModel(savedModel);
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
 
   // Fetch conversations for workspace
   const loadConversations = useCallback(async () => {
@@ -58,23 +62,8 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
   }, [workspaceId]);
 
   useEffect(() => {
-    let ignore = false;
-    async function fetchInitial() {
-      try {
-        const res = await fetch(`/api/conversations?workspaceId=${workspaceId}`);
-        if (res.ok && !ignore) {
-          const data = await res.json();
-          setConversations(data.conversations || []);
-        }
-      } catch {
-        // Ignore background load failures
-      }
-    }
-    fetchInitial();
-    return () => {
-      ignore = true;
-    };
-  }, [workspaceId]);
+    loadConversations();
+  }, [loadConversations]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -150,8 +139,8 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
     setLiveAnnouncement("AI question submitted. Generation started.");
 
     // Add user message
-    const userMsgId = `msg-user-${crypto.randomUUID()}`;
-    const assistantMsgId = `msg-assistant-${crypto.randomUUID()}`;
+    const userMsgId = `msg-user-${Date.now()}`;
+    const assistantMsgId = `msg-assistant-${Date.now()}`;
 
     const newMessages: ChatMessage[] = [
       ...messages,
@@ -189,10 +178,8 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
-      const streamState = {
-        content: "",
-        citations: [] as GroundedCitation[],
-      };
+      let assistantContent = "";
+      let resolvedCitations: GroundedCitation[] = [];
 
       while (true) {
         const { value, done } = await reader.read();
@@ -209,15 +196,12 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
               if (data.type === "conversation") {
                 setActiveConversationId(data.conversationId);
               } else if (data.type === "citations") {
-                streamState.citations = data.citations;
+                resolvedCitations = data.citations;
               } else if (data.type === "token") {
-                streamState.content += data.token;
+                assistantContent += data.token;
               } else if (data.type === "error") {
                 setErrorMsg(data.error);
               }
-
-              const currentContent = streamState.content;
-              const currentCitations = streamState.citations;
 
               // Update message in state
               setMessages((prev) =>
@@ -225,8 +209,8 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
                   msg.id === assistantMsgId
                     ? {
                         ...msg,
-                        content: currentContent,
-                        citations: currentCitations,
+                        content: assistantContent,
+                        citations: resolvedCitations,
                         isStreaming: true,
                       }
                     : msg
@@ -246,14 +230,13 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
         )
       );
       setLiveAnnouncement(
-        `AI response completed with ${streamState.citations.length} citations.`
+        `AI response completed with ${resolvedCitations.length} citations.`
       );
 
       // Refresh conversations list to update title
       loadConversations();
-    } catch (err: unknown) {
-      const isAbort = err instanceof Error && err.name === "AbortError";
-      if (isAbort) {
+    } catch (err: any) {
+      if (err.name === "AbortError") {
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMsgId
@@ -266,8 +249,7 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
           )
         );
       } else {
-        const errorMsg = err instanceof Error ? err.message : "Failed to generate answer.";
-        setErrorMsg(errorMsg);
+        setErrorMsg(err?.message || "Failed to generate answer.");
         setMessages((prev) => prev.filter((msg) => msg.id !== assistantMsgId));
       }
     } finally {
@@ -355,7 +337,7 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
                   onClick={() => handleSend(suggestion)}
                   className="rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2 text-xs font-medium text-slate-700 hover:border-blue-300 hover:bg-blue-50/80 hover:text-blue-700 transition"
                 >
-                  &ldquo;{suggestion}&rdquo;
+                  "{suggestion}"
                 </button>
               ))}
             </div>

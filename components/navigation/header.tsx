@@ -1,10 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Menu, Terminal, LogOut, LogIn } from "lucide-react";
+import { Menu, Terminal, User as UserIcon, LogOut, LogIn } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { AuthModal } from "@/components/auth/auth-modal";
-import type { User } from "@supabase/supabase-js";
 
 interface HeaderProps {
   onToggleSidebar?: () => void;
@@ -12,7 +11,7 @@ interface HeaderProps {
 }
 
 export function Header({ onToggleSidebar, activeProvider = "gemini" }: HeaderProps) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   useEffect(() => {

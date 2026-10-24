@@ -1,3 +1,6 @@
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import type { Embeddings } from "@langchain/core/embeddings";
+
 export type SupportedAIProvider = "ollama" | "gemini" | "groq";
 export type SupportedEmbeddingProvider = "ollama" | "gemini";
 
