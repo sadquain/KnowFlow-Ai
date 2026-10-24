@@ -109,6 +109,7 @@ export function getEmbeddingModel(
       return new GoogleGenerativeAIEmbeddings({
         model: modelName,
         apiKey,
+        outputDimensionality: 768,
       });
     }
 

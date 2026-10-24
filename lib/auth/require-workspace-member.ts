@@ -19,6 +19,7 @@ export interface DocumentAccessContext {
     user_id: string;
     title: string;
     file_path: string;
+    file_type: string;
     status: string;
   };
   workspaceId: string;
@@ -115,7 +116,7 @@ export async function requireDocumentAccess(
 
   let query = adminDb
     .from("documents")
-    .select("id, workspace_id, user_id, title, file_path, status")
+    .select("id, workspace_id, user_id, title, file_path, file_type, status")
     .eq("id", documentId);
 
   if (workspaceId) {

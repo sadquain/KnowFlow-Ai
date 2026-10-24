@@ -7,15 +7,19 @@ import { DocumentCard, type DocumentItem } from "./document-card";
 interface DocumentListProps {
   documents: DocumentItem[];
   onDelete: (id: string) => void;
+  onRetry?: (id: string) => void;
   onOpenUpload: () => void;
   isLoading?: boolean;
+  isRetryingId?: string | null;
 }
 
 export function DocumentList({
   documents,
   onDelete,
+  onRetry,
   onOpenUpload,
   isLoading,
+  isRetryingId,
 }: DocumentListProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -90,7 +94,13 @@ export function DocumentList({
       {!isLoading && filteredDocs.length > 0 && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredDocs.map((doc) => (
-            <DocumentCard key={doc.id} document={doc} onDelete={onDelete} />
+            <DocumentCard
+              key={doc.id}
+              document={doc}
+              onDelete={onDelete}
+              onRetry={onRetry}
+              isRetrying={isRetryingId === doc.id}
+            />
           ))}
         </div>
       )}

@@ -53,6 +53,8 @@ function DocumentsContent() {
     };
   }, [workspaceId, isWsLoading]);
 
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+
   const handleDelete = async (id: string) => {
     if (!workspaceId) return;
     try {
@@ -64,6 +66,25 @@ function DocumentsContent() {
       }
     } catch {
       // Handled
+    }
+  };
+
+  const handleRetry = async (id: string) => {
+    if (!workspaceId) return;
+    try {
+      setRetryingId(id);
+      const res = await fetch(`/api/documents/${id}/retry?workspaceId=${workspaceId}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Retry failed.");
+      }
+      await fetchDocuments();
+    } catch (err) {
+      console.error("Retry failed:", err);
+    } finally {
+      setRetryingId(null);
     }
   };
 
@@ -86,6 +107,8 @@ function DocumentsContent() {
       <DocumentList
         documents={documents}
         onDelete={handleDelete}
+        onRetry={handleRetry}
+        isRetryingId={retryingId}
         onOpenUpload={() => setIsUploadOpen(true)}
         isLoading={isLoading || isWsLoading}
       />

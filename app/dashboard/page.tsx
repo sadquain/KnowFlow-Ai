@@ -77,6 +77,8 @@ function DashboardContent() {
     };
   }, [workspaceId, isWsLoading]);
 
+  const [retryingDocId, setRetryingDocId] = useState<string | null>(null);
+
   const handleDeleteDocument = async (id: string) => {
     if (!workspaceId) return;
     try {
@@ -88,6 +90,25 @@ function DashboardContent() {
       }
     } catch {
       // Handled
+    }
+  };
+
+  const handleRetryDocument = async (id: string) => {
+    if (!workspaceId) return;
+    try {
+      setRetryingDocId(id);
+      const res = await fetch(`/api/documents/${id}/retry?workspaceId=${workspaceId}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Retry failed.");
+      }
+      await fetchDashboardData();
+    } catch (err) {
+      console.error("Retry failed:", err);
+    } finally {
+      setRetryingDocId(null);
     }
   };
 
@@ -164,6 +185,8 @@ function DashboardContent() {
                     key={doc.id}
                     document={doc}
                     onDelete={handleDeleteDocument}
+                    onRetry={handleRetryDocument}
+                    isRetrying={retryingDocId === doc.id}
                   />
                 ))}
               </div>

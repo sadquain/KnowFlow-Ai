@@ -121,10 +121,12 @@ export async function processDocument(
       separators: ["\n\n", "\n", ". ", " ", ""],
     });
 
-    const documentsToSplit = pages.map((p) => ({
-      pageContent: p.text,
-      metadata: { pageNumber: p.pageNumber || 1 },
-    }));
+    const documentsToSplit = pages
+      .map((p) => ({
+        pageContent: normalizeText(p.text),
+        metadata: { pageNumber: p.pageNumber || 1 },
+      }))
+      .filter((p) => p.pageContent.trim().length > 0);
 
     const splitDocs = await splitter.splitDocuments(documentsToSplit);
     if (splitDocs.length === 0) {
@@ -150,7 +152,7 @@ export async function processDocument(
       throw new Error(`Failed to clean up existing chunks: ${deleteError.message}`);
     }
 
-    // 6. Bulk insert chunks with vector embeddings and model name
+    // 6. Bulk insert chunks with vector embeddings and model name stored in metadata JSONB
     const config = getProviderConfig();
     const chunksPayload = splitDocs.map((doc, index) => ({
       id: crypto.randomUUID(),
@@ -161,10 +163,10 @@ export async function processDocument(
       metadata: {
         character_count: doc.pageContent.length,
         chunk_index: index,
-        page_number: doc.metadata?.pageNumber || index + 1,
+        page_number: (doc.metadata?.pageNumber as number) || 1,
+        embedding_model: config.embedModelName,
       },
       embedding: vectors[index],
-      embedding_model: config.embedModelName,
       created_at: new Date().toISOString(),
     }));
 
@@ -182,7 +184,6 @@ export async function processDocument(
       .update({
         status: "ready",
         chunk_count: splitDocs.length,
-        embedding_model: config.embedModelName,
         error_message: null,
         updated_at: new Date().toISOString(),
       })
@@ -197,7 +198,10 @@ export async function processDocument(
       chunkCount: splitDocs.length,
     };
   } catch (error: unknown) {
-    const errorMsg = error instanceof Error ? error.message : "An unexpected error occurred during processing.";
+    let errorMsg = error instanceof Error ? error.message : "An unexpected error occurred during processing.";
+    if (errorMsg.includes("fetch failed") || errorMsg.includes("ECONNREFUSED") || errorMsg.includes("11434")) {
+      errorMsg = "Embedding generation failed: Unable to connect to embedding service. If using Ollama, ensure it is running at http://localhost:11434, or set EMBEDDING_PROVIDER=gemini in .env.local.";
+    }
 
     // Ensure document is explicitly marked failed in database with the exact error
     try {
