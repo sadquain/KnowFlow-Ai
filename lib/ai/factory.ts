@@ -22,7 +22,7 @@ export function getProviderConfig(): ProviderConfig {
   if (aiProvider === "gemini") {
     chatModelName = process.env.GEMINI_CHAT_MODEL || "gemini-3.8-flash";
   } else if (aiProvider === "groq") {
-    chatModelName = process.env.GROQ_CHAT_MODEL || "llama-3.3-70b-versatile";
+    chatModelName = process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b";
   }
 
   let embedModelName = process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text";
@@ -68,7 +68,7 @@ export function getChatModel(
       if (!apiKey) {
         throw new Error("GROQ_API_KEY is not configured in environment variables.");
       }
-      const modelName = overrideModel || process.env.GROQ_CHAT_MODEL || "llama-3.3-70b-versatile";
+      const modelName = overrideModel || process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b";
       return new ChatGroq({
         model: modelName,
         apiKey,

@@ -112,7 +112,7 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
     (activeProvider === "gemini"
       ? process.env.GEMINI_CHAT_MODEL || "gemini-3.8-flash"
       : activeProvider === "groq"
-      ? process.env.GROQ_CHAT_MODEL || "llama-3.3-70b-versatile"
+      ? process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b"
       : process.env.OLLAMA_CHAT_MODEL || "llama3.2");
 
   const convId = options.conversationId || crypto.randomUUID();

@@ -24,8 +24,8 @@ export const AVAILABLE_MODELS: ModelOption[] = [
   },
   {
     provider: "groq",
-    model: "llama-3.3-70b-versatile",
-    label: "Llama 3.3 70B (Groq)",
+    model: "openai/gpt-oss-120b",
+    label: "GPT-OSS 120B (Groq)",
     providerLabel: "Groq LPU",
     tag: "Ultra-Fast LPU",
     icon: Zap,

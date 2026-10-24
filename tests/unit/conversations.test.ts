@@ -64,7 +64,7 @@ describe("Conversation & Multi-LLM Provider Suite", () => {
   });
 
   it("should configure Groq chat model when explicitly requested", () => {
-    const model = getChatModel("groq", "llama-3.3-70b-versatile");
+    const model = getChatModel("groq", "openai/gpt-oss-120b");
     expect(model).toBeDefined();
   });
 
