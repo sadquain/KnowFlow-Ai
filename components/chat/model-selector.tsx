@@ -16,8 +16,8 @@ export interface ModelOption {
 export const AVAILABLE_MODELS: ModelOption[] = [
   {
     provider: "gemini",
-    model: "gemini-3.8-flash",
-    label: "Gemini 3.8 Flash",
+    model: "gemini-3.5-flash",
+    label: "Gemini 3.5 Flash",
     providerLabel: "Google Gemini",
     tag: "Recommended • Fast",
     icon: Sparkles,

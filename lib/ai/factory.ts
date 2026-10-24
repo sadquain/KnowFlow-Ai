@@ -20,7 +20,7 @@ export function getProviderConfig(): ProviderConfig {
 
   let chatModelName = process.env.OLLAMA_CHAT_MODEL || "llama3.2";
   if (aiProvider === "gemini") {
-    chatModelName = process.env.GEMINI_CHAT_MODEL || "gemini-3.8-flash";
+    chatModelName = process.env.GEMINI_CHAT_MODEL || "gemini-3.5-flash";
   } else if (aiProvider === "groq") {
     chatModelName = process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b";
   }
@@ -55,7 +55,7 @@ export function getChatModel(
       if (!apiKey) {
         throw new Error("GEMINI_API_KEY is not configured in environment variables.");
       }
-      const modelName = overrideModel || process.env.GEMINI_CHAT_MODEL || "gemini-3.8-flash";
+      const modelName = overrideModel || process.env.GEMINI_CHAT_MODEL || "gemini-3.5-flash";
       return new ChatGoogleGenerativeAI({
         model: modelName,
         apiKey,

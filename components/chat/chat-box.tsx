@@ -33,7 +33,7 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
       const saved = localStorage.getItem("knowflow_ai_model");
       if (saved) return saved;
     }
-    return "gemini-3.8-flash";
+    return "gemini-3.5-flash";
   });
 
   // Conversation Threads & Persistence

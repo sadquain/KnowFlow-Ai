@@ -57,7 +57,7 @@ export async function retrieveRelevantChunks(
   question: string,
   workspaceId: string,
   documentIds?: string[],
-  matchThreshold: number = 0.55,
+  matchThreshold: number = 0.35,
   matchCount: number = 5,
   provider?: SupportedAIProvider
 ): Promise<RetrievedChunk[]> {
@@ -76,7 +76,7 @@ export async function retrieveRelevantChunks(
     const queryEmbedding = await embeddingModel.embedQuery(question);
 
     // 2. Call parameterized stored procedure in PostgreSQL
-    const { data, error } = await supabase.rpc("match_document_chunks", {
+    const { data: initialData, error } = await supabase.rpc("match_document_chunks", {
       query_embedding: queryEmbedding,
       match_threshold: matchThreshold,
       match_count: matchCount,
@@ -89,7 +89,24 @@ export async function retrieveRelevantChunks(
       throw new Error(`Vector search failed: ${error.message}`);
     }
 
-    return (data || []) as RetrievedChunk[];
+    let chunksData = initialData;
+
+    // If no chunks matched at initial threshold, try relaxed threshold (0.25)
+    // to handle open-ended summary or overview queries across documents
+    if ((!chunksData || chunksData.length === 0) && matchThreshold > 0.25) {
+      const relaxedResult = await supabase.rpc("match_document_chunks", {
+        query_embedding: queryEmbedding,
+        match_threshold: 0.25,
+        match_count: matchCount,
+        p_workspace_id: workspaceId,
+        p_document_ids: documentIds && documentIds.length > 0 ? documentIds : null,
+      });
+      if (relaxedResult.data && relaxedResult.data.length > 0) {
+        chunksData = relaxedResult.data;
+      }
+    }
+
+    return (chunksData || []) as RetrievedChunk[];
   } catch (err: unknown) {
     console.error("[rag-service] Error retrieving chunks:", err);
     throw err;
@@ -113,7 +130,7 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
   const activeModel =
     options.model ||
     (activeProvider === "gemini"
-      ? process.env.GEMINI_CHAT_MODEL || "gemini-3.8-flash"
+      ? process.env.GEMINI_CHAT_MODEL || "gemini-3.5-flash"
       : activeProvider === "groq"
       ? process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b"
       : process.env.OLLAMA_CHAT_MODEL || "llama3.2");
@@ -152,7 +169,7 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
     cleanQuestion,
     options.workspaceId,
     options.documentIds,
-    options.matchThreshold ?? 0.55,
+    options.matchThreshold ?? 0.35,
     options.matchCount ?? 5,
     activeProvider
   );
