@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Trash2, Calendar, FileText, Layers } from "lucide-react";
+import { Trash2, Calendar, FileText, Layers, Download } from "lucide-react";
 import { DocumentStatusBadge, DocumentTypeBadge } from "./document-badge";
 import { formatBytes, formatDate } from "@/lib/utils";
 
@@ -31,15 +31,27 @@ export function DocumentCard({ document, onDelete, isDeleting }: DocumentCardPro
           <DocumentStatusBadge status={document.status} />
         </div>
 
-        <button
-          type="button"
-          onClick={() => onDelete(document.id)}
-          disabled={isDeleting}
-          aria-label={`Delete document ${document.title}`}
-          className="rounded-lg p-1.5 text-slate-400 opacity-80 transition-all hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-40"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <a
+            href={`/api/documents/${document.id}/download`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Download original document or content"
+            aria-label={`Download document ${document.title}`}
+            className="rounded-lg p-1.5 text-slate-400 opacity-80 transition-all hover:bg-blue-50 hover:text-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <Download className="h-4 w-4" />
+          </a>
+          <button
+            type="button"
+            onClick={() => onDelete(document.id)}
+            disabled={isDeleting}
+            aria-label={`Delete document ${document.title}`}
+            className="rounded-lg p-1.5 text-slate-400 opacity-80 transition-all hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-40"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <h3 className="mt-3 text-sm font-bold text-slate-900 line-clamp-1" title={document.title}>

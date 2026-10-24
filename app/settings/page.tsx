@@ -51,7 +51,7 @@ export default function SettingsPage() {
                 </span>
               </div>
               <p className="mt-1 text-[11px] text-slate-600">
-                gemini-1.5-flash & text-embedding-004 (15 RPM free).
+                gemini-3.8-flash & gemini-embedding-001 (15 RPM free).
               </p>
             </div>
 
@@ -78,7 +78,7 @@ export default function SettingsPage() {
           <div className="mt-4 space-y-3 text-xs text-slate-600">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="font-medium text-slate-700">Vector Dimension:</span>
-              <span className="font-mono text-slate-900">768 (nomic-embed-text & text-embedding-004)</span>
+              <span className="font-mono text-slate-900">768 (nomic-embed-text & gemini-embedding-001)</span>
             </div>
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="font-medium text-slate-700">Distance Metric:</span>

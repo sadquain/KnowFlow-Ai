@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { processDocument } from "@/services/document-processor";
 import { localStore } from "@/lib/storage/store";
+import { DEMO_USER_ID } from "@/lib/auth";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".txt", ".md"];
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const userId = user?.id || "demo-user-id";
+    const userId = user?.id || DEMO_USER_ID;
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const workspaceId = formData.get("workspaceId") as string | null;
@@ -49,12 +50,24 @@ export async function POST(req: NextRequest) {
     const adminDb = createAdminClient();
     const documentId = crypto.randomUUID();
 
+    const filePath = `${workspaceId}/${documentId}/${fileName}`;
+
+    // Upload raw binary file to Supabase Storage bucket
+    try {
+      await adminDb.storage.from("documents").upload(filePath, buffer, {
+        contentType: file.type || "application/octet-stream",
+        upsert: true,
+      });
+    } catch {
+      // Non-blocking storage upload
+    }
+
     const newDoc = {
       id: documentId,
       workspace_id: workspaceId,
       user_id: userId,
       title: fileName,
-      file_path: `documents/${workspaceId}/${documentId}/${fileName}`,
+      file_path: filePath,
       file_type: ext.replace(".", ""),
       file_size_bytes: file.size,
       status: "uploading" as const,

@@ -37,11 +37,33 @@ export interface StoredChunk {
   created_at: string;
 }
 
+export interface StoredConversation {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoredMessage {
+  id: string;
+  conversation_id: string;
+  workspace_id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  citations?: any[];
+  token_count?: number;
+  created_at: string;
+}
+
 // Global in-memory cache preserved across requests in development
 class LocalMemoryStore {
   private workspaces: Map<string, StoredWorkspace> = new Map();
   private documents: Map<string, StoredDocument> = new Map();
   private chunks: StoredChunk[] = [];
+  private conversations: Map<string, StoredConversation> = new Map();
+  private messages: StoredMessage[] = [];
   private queryCount = 0;
 
   constructor() {
@@ -140,6 +162,52 @@ class LocalMemoryStore {
       this.chunks = this.chunks.filter((c) => c.document_id !== docId);
       this.chunks.push(...chunks);
     }
+  }
+
+  getConversations(workspaceId: string): StoredConversation[] {
+    return Array.from(this.conversations.values())
+      .filter((c) => c.workspace_id === workspaceId)
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  }
+
+  getConversation(id: string): StoredConversation | undefined {
+    return this.conversations.get(id);
+  }
+
+  createConversation(workspaceId: string, userId: string, title?: string): StoredConversation {
+    const conv: StoredConversation = {
+      id: crypto.randomUUID(),
+      workspace_id: workspaceId,
+      user_id: userId,
+      title: title || "New Conversation",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    this.conversations.set(conv.id, conv);
+    return conv;
+  }
+
+  deleteConversation(id: string): void {
+    this.conversations.delete(id);
+    this.messages = this.messages.filter((m) => m.conversation_id !== id);
+  }
+
+  getMessages(conversationId: string): StoredMessage[] {
+    return this.messages
+      .filter((m) => m.conversation_id === conversationId)
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  }
+
+  addMessage(msg: StoredMessage): StoredMessage {
+    this.messages.push(msg);
+    const conv = this.conversations.get(msg.conversation_id);
+    if (conv) {
+      conv.updated_at = new Date().toISOString();
+      if (conv.title === "New Conversation" && msg.role === "user") {
+        conv.title = msg.content.slice(0, 40) + (msg.content.length > 40 ? "..." : "");
+      }
+    }
+    return msg;
   }
 
   getMetrics(workspaceId: string) {

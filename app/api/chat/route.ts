@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const userId = user?.id || "demo-user-id";
 
     const body = await req.json();
-    const { question, workspaceId, documentIds, conversationId } = body;
+    const { question, workspaceId, documentIds, conversationId, provider, model } = body;
 
     if (!question || typeof question !== "string") {
       return NextResponse.json(
@@ -35,6 +35,9 @@ export async function POST(req: NextRequest) {
       workspaceId,
       userId,
       documentIds,
+      conversationId,
+      provider,
+      model,
       abortSignal: req.signal,
     });
 

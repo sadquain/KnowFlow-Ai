@@ -22,6 +22,8 @@ export async function GET() {
   }
 }
 
+import { DEMO_USER_ID } from "@/lib/auth";
+
 export async function POST(req: NextRequest) {
   try {
     const supabaseUser = await createClient();
@@ -29,7 +31,7 @@ export async function POST(req: NextRequest) {
       data: { user },
     } = await supabaseUser.auth.getUser();
 
-    const userId = user?.id || "demo-user-id";
+    const userId = user?.id || DEMO_USER_ID;
     const body = await req.json();
     const { name } = body;
 

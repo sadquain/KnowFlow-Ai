@@ -2,13 +2,17 @@ import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { getChatModel, getEmbeddingModel, getProviderConfig } from "@/lib/ai/factory";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { RetrievedChunk, GroundedCitation } from "@/lib/ai/types";
+import { DEMO_USER_ID } from "@/lib/auth";
+import type { RetrievedChunk, GroundedCitation, SupportedAIProvider } from "@/lib/ai/types";
 
 export interface RAGQueryOptions {
   question: string;
   workspaceId: string;
   userId?: string;
   documentIds?: string[];
+  conversationId?: string;
+  provider?: SupportedAIProvider;
+  model?: string;
   matchThreshold?: number;
   matchCount?: number;
   abortSignal?: AbortSignal;
@@ -17,6 +21,7 @@ export interface RAGQueryOptions {
 export interface RAGStreamResult {
   stream: ReadableStream<Uint8Array>;
   citations: GroundedCitation[];
+  conversationId?: string;
 }
 
 const SYSTEM_PROMPT = `You are KnowFlow AI, a rigorous and truthful document knowledge assistant.
@@ -55,11 +60,19 @@ export async function retrieveRelevantChunks(
   workspaceId: string,
   documentIds?: string[],
   matchThreshold: number = 0.55,
-  matchCount: number = 5
+  matchCount: number = 5,
+  provider?: SupportedAIProvider
 ): Promise<RetrievedChunk[]> {
   try {
     const supabase = createAdminClient();
-    const embeddingModel = getEmbeddingModel();
+    const embedProvider = provider === "gemini" ? "gemini" : provider === "groq" ? (process.env.GEMINI_API_KEY ? "gemini" : "ollama") : (process.env.EMBEDDING_PROVIDER === "gemini" ? "gemini" : "ollama");
+    
+    let embeddingModel;
+    try {
+      embeddingModel = getEmbeddingModel(embedProvider as any);
+    } catch {
+      embeddingModel = getEmbeddingModel(process.env.GEMINI_API_KEY ? "gemini" : "ollama");
+    }
 
     // 1. Generate query embedding
     const queryEmbedding = await embeddingModel.embedQuery(question);
@@ -91,6 +104,55 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
   const cleanQuestion = sanitizeQuestion(options.question);
   const config = getProviderConfig();
   const supabase = createAdminClient();
+  const validUserId = options.userId && options.userId !== "demo-user-id" ? options.userId : DEMO_USER_ID;
+
+  const activeProvider = options.provider || config.aiProvider;
+  const activeModel =
+    options.model ||
+    (activeProvider === "gemini"
+      ? process.env.GEMINI_CHAT_MODEL || "gemini-3.8-flash"
+      : activeProvider === "groq"
+      ? process.env.GROQ_CHAT_MODEL || "llama-3.3-70b-versatile"
+      : process.env.OLLAMA_CHAT_MODEL || "llama3.2");
+
+  const convId = options.conversationId || crypto.randomUUID();
+
+  // Persist conversation and initial user message
+  try {
+    const { data: existingConv } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("id", convId)
+      .maybeSingle();
+
+    if (!existingConv) {
+      await supabase.from("conversations").insert({
+        id: convId,
+        workspace_id: options.workspaceId,
+        user_id: validUserId,
+        title: cleanQuestion.slice(0, 45) + (cleanQuestion.length > 45 ? "..." : ""),
+      });
+    }
+
+    await supabase.from("messages").insert({
+      conversation_id: convId,
+      workspace_id: options.workspaceId,
+      role: "user",
+      content: cleanQuestion,
+    });
+  } catch {
+    if (!localStore.getConversation(convId)) {
+      localStore.createConversation(options.workspaceId, validUserId, cleanQuestion.slice(0, 45));
+    }
+    localStore.addMessage({
+      id: crypto.randomUUID(),
+      conversation_id: convId,
+      workspace_id: options.workspaceId,
+      role: "user",
+      content: cleanQuestion,
+      created_at: new Date().toISOString(),
+    });
+  }
 
   // 1. Retrieve evidence chunks
   const chunks = await retrieveRelevantChunks(
@@ -98,7 +160,8 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
     options.workspaceId,
     options.documentIds,
     options.matchThreshold ?? 0.55,
-    options.matchCount ?? 5
+    options.matchCount ?? 5,
+    activeProvider
   );
 
   // 2. Map citations from verified retrieved chunks
@@ -116,13 +179,13 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
   if (chunks.length === 0) {
     const insufficientMsg = "I couldn't find enough information in your knowledge base to answer that.";
     const encoder = new TextEncoder();
-    
+
     // Log usage
     await supabase.from("ai_usage").insert({
       workspace_id: options.workspaceId,
-      user_id: options.userId || null,
-      provider: config.aiProvider,
-      model: config.chatModelName,
+      user_id: validUserId,
+      provider: activeProvider,
+      model: activeModel,
       prompt_tokens: 0,
       completion_tokens: 0,
       total_tokens: 0,
@@ -133,19 +196,22 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
     const staticStream = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ type: "conversation", conversationId: convId })}\n\n`)
+        );
+        controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: "citations", citations: [] })}\n\n`)
         );
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: "token", token: insufficientMsg })}\n\n`)
         );
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`)
+          encoder.encode(`data: ${JSON.stringify({ type: "done", conversationId: convId })}\n\n`)
         );
         controller.close();
       },
     });
 
-    return { stream: staticStream, citations: [] };
+    return { stream: staticStream, citations: [], conversationId: convId };
   }
 
   // 4. Construct grounded context
@@ -162,7 +228,7 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
     ["human", "{question}"],
   ]);
 
-  const chatModel = getChatModel();
+  const chatModel = getChatModel(activeProvider, activeModel);
   const outputParser = new StringOutputParser();
   const chain = prompt.pipe(chatModel).pipe(outputParser);
 
@@ -171,7 +237,12 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        // First event: Send citations
+        // Send conversation event first
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ type: "conversation", conversationId: convId })}\n\n`)
+        );
+
+        // Send citations
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: "citations", citations })}\n\n`)
         );
@@ -195,12 +266,57 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
 
         const latencyMs = Date.now() - startTime;
 
+        // Persist assistant message
+        try {
+          const { data: assistantMsg } = await supabase
+            .from("messages")
+            .insert({
+              conversation_id: convId,
+              workspace_id: options.workspaceId,
+              role: "assistant",
+              content: fullText,
+            })
+            .select()
+            .single();
+
+          if (assistantMsg && citations.length > 0) {
+            const sourcesToInsert = citations
+              .filter((c) => c.document_id && !c.document_id.startsWith("sample-"))
+              .map((c) => ({
+                message_id: assistantMsg.id,
+                document_id: c.document_id,
+                chunk_id:
+                  c.chunk_id && !c.chunk_id.startsWith("chunk-seed") && !c.chunk_id.startsWith("cite-")
+                    ? c.chunk_id
+                    : null,
+                similarity_score: c.similarity_score,
+                snippet: c.snippet,
+                page_number: c.page_number ?? 1,
+              }));
+
+            if (sourcesToInsert.length > 0) {
+              await supabase.from("message_sources").insert(sourcesToInsert);
+            }
+          }
+        } catch {
+          localStore.addMessage({
+            id: crypto.randomUUID(),
+            conversation_id: convId,
+            workspace_id: options.workspaceId,
+            role: "assistant",
+            content: fullText,
+            citations,
+            created_at: new Date().toISOString(),
+          });
+        }
+
         // Final event: Done
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({
               type: "done",
-              usage: { latency_ms: latencyMs },
+              conversationId: convId,
+              usage: { latency_ms: latencyMs, provider: activeProvider, model: activeModel },
             })}\n\n`
           )
         );
@@ -208,9 +324,9 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
         // Record metrics asynchronously
         await supabase.from("ai_usage").insert({
           workspace_id: options.workspaceId,
-          user_id: options.userId || null,
-          provider: config.aiProvider,
-          model: config.chatModelName,
+          user_id: validUserId,
+          provider: activeProvider,
+          model: activeModel,
           latency_ms: latencyMs,
           status: "success",
         });
@@ -222,34 +338,54 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
 
         await supabase.from("ai_usage").insert({
           workspace_id: options.workspaceId,
-          user_id: options.userId || null,
-          provider: config.aiProvider,
-          model: config.chatModelName,
+          user_id: validUserId,
+          provider: activeProvider,
+          model: activeModel,
           latency_ms: latencyMs,
           status: isAborted ? "cancelled" : "failed",
           error_code: err?.message?.slice(0, 100),
         });
 
         if (!isAborted) {
+          const isOllamaConnError =
+            activeProvider === "ollama" &&
+            (err?.message?.includes("fetch failed") ||
+              err?.message?.includes("ECONNREFUSED") ||
+              err?.code === "ECONNREFUSED");
+
           // If chunks exist, provide a grounded synthesis of evidence even if LLM server is offline
           if (chunks.length > 0) {
+            const guidanceNote = isOllamaConnError
+              ? `*(Note: Ollama is not running on \`http://localhost:11434\`. You can start it via \`ollama serve\` or switch to **Google Gemini** or **Groq** in the model selector above for instant cloud inference.)*`
+              : `*(Note: Provider \`${activeProvider}\` encountered an error: ${err?.message || "Connection issue"}. You can switch to Gemini or Groq above.)*`;
+
             const fallbackText =
               `Based on the retrieved sources from your knowledge base:\n\n` +
               chunks.map((c, i) => `[${i + 1}] **${c.document_title}**:\n${c.content}`).join("\n\n") +
-              `\n\n*(Note: To enable dynamic LLM text completion, start Ollama locally via \`ollama serve\` or switch to Google Gemini with your API key in Settings.)*`;
+              `\n\n${guidanceNote}`;
 
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ type: "token", token: fallbackText })}\n\n`)
             );
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ type: "done", usage: { latency_ms: latencyMs } })}\n\n`)
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "done",
+                  conversationId: convId,
+                  usage: { latency_ms: latencyMs },
+                })}\n\n`
+              )
             );
           } else {
+            const userError = isOllamaConnError
+              ? "Could not connect to Ollama at http://localhost:11434. Please ensure Ollama is running, or switch to Google Gemini or Groq using the model selector above."
+              : err?.message || "Generation encountered an unexpected failure.";
+
             controller.enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({
                   type: "error",
-                  error: err?.message || "Generation encountered an unexpected failure.",
+                  error: userError,
                 })}\n\n`
               )
             );
@@ -260,5 +396,5 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
     },
   });
 
-  return { stream, citations };
+  return { stream, citations, conversationId: convId };
 }

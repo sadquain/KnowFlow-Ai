@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { Send, Square, AlertCircle, Sparkles, CornerDownLeft } from "lucide-react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { Send, Square, AlertCircle, Sparkles, History, Plus } from "lucide-react";
 import { MessageItem, type ChatMessage } from "./message-item";
 import { CitationPreviewDrawer } from "./citation-preview-drawer";
-import type { GroundedCitation } from "@/lib/ai/types";
+import { ModelSelector } from "./model-selector";
+import { ConversationHistoryDrawer, type ConversationSummary } from "./conversation-history-drawer";
+import type { GroundedCitation, SupportedAIProvider } from "@/lib/ai/types";
 
 interface ChatBoxProps {
   workspaceId: string;
@@ -18,8 +20,50 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [liveAnnouncement, setLiveAnnouncement] = useState("");
 
+  // Model & Provider Selection
+  const [selectedProvider, setSelectedProvider] = useState<SupportedAIProvider>("gemini");
+  const [selectedModel, setSelectedModel] = useState<string>("gemini-3.8-flash");
+
+  // Conversation Threads & Persistence
+  const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Restore saved provider & model from localStorage
+  useEffect(() => {
+    try {
+      const savedProvider = localStorage.getItem("knowflow_ai_provider") as SupportedAIProvider | null;
+      const savedModel = localStorage.getItem("knowflow_ai_model");
+      if (savedProvider) {
+        setSelectedProvider(savedProvider);
+      }
+      if (savedModel) {
+        setSelectedModel(savedModel);
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  // Fetch conversations for workspace
+  const loadConversations = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/conversations?workspaceId=${workspaceId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setConversations(data.conversations || []);
+      }
+    } catch {
+      // Ignore background load failures
+    }
+  }, [workspaceId]);
+
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -28,6 +72,53 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const handleModelChange = (provider: SupportedAIProvider, model: string) => {
+    setSelectedProvider(provider);
+    setSelectedModel(model);
+    try {
+      localStorage.setItem("knowflow_ai_provider", provider);
+      localStorage.setItem("knowflow_ai_model", model);
+    } catch {
+      // Ignore
+    }
+  };
+
+  // Load specific conversation
+  const handleSelectConversation = async (convId: string) => {
+    setActiveConversationId(convId);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`/api/conversations/${convId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data.messages || []);
+      }
+    } catch {
+      setErrorMsg("Failed to load previous messages.");
+    }
+  };
+
+  // Start new conversation
+  const handleNewConversation = () => {
+    setActiveConversationId(undefined);
+    setMessages([]);
+    setErrorMsg(null);
+    setInput("");
+  };
+
+  // Delete conversation
+  const handleDeleteConversation = async (convId: string) => {
+    try {
+      await fetch(`/api/conversations/${convId}`, { method: "DELETE" });
+      setConversations((prev) => prev.filter((c) => c.id !== convId));
+      if (activeConversationId === convId) {
+        handleNewConversation();
+      }
+    } catch {
+      // Ignore
+    }
+  };
 
   const handleStop = () => {
     if (abortControllerRef.current) {
@@ -69,6 +160,9 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
         body: JSON.stringify({
           question: questionText,
           workspaceId,
+          conversationId: activeConversationId,
+          provider: selectedProvider,
+          model: selectedModel,
         }),
         signal: controller.signal,
       });
@@ -99,7 +193,9 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
             try {
               const data = JSON.parse(line.slice(6));
 
-              if (data.type === "citations") {
+              if (data.type === "conversation") {
+                setActiveConversationId(data.conversationId);
+              } else if (data.type === "citations") {
                 resolvedCitations = data.citations;
               } else if (data.type === "token") {
                 assistantContent += data.token;
@@ -136,6 +232,9 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
       setLiveAnnouncement(
         `AI response completed with ${resolvedCitations.length} citations.`
       );
+
+      // Refresh conversations list to update title
+      loadConversations();
     } catch (err: any) {
       if (err.name === "AbortError") {
         setMessages((prev) =>
@@ -168,6 +267,46 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
 
   return (
     <div className="flex h-[calc(100vh-10rem)] flex-col rounded-2xl border border-slate-200 bg-white shadow-xs">
+      {/* Top Toolbar: Model Selector & Chat Thread Controls */}
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-100 px-4 py-2.5 gap-2 bg-slate-50/50 rounded-t-2xl">
+        <div className="flex items-center gap-2">
+          <ModelSelector
+            selectedProvider={selectedProvider}
+            selectedModel={selectedModel}
+            onSelect={handleModelChange}
+            disabled={isGenerating}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsHistoryOpen(true)}
+            aria-label="Open conversation history"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition"
+          >
+            <History className="h-3.5 w-3.5 text-slate-500" />
+            <span className="hidden sm:inline">History</span>
+            {conversations.length > 0 && (
+              <span className="rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] font-bold text-slate-600">
+                {conversations.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleNewConversation}
+            disabled={isGenerating}
+            title="Start a new chat thread"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-blue-600 transition disabled:opacity-50"
+          >
+            <Plus className="h-3.5 w-3.5 text-blue-600" />
+            <span className="hidden sm:inline">New Chat</span>
+          </button>
+        </div>
+      </div>
+
       {/* Screen reader live announcement */}
       <div className="sr-only" aria-live="polite">
         {liveAnnouncement}
@@ -184,7 +323,7 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
               Ask anything about your knowledge base
             </h2>
             <p className="mt-1 max-w-md text-xs text-slate-500 leading-relaxed">
-              KnowFlow AI will search your uploaded documents with pgvector and synthesize an answer grounded strictly in verified sources.
+              KnowFlow AI searches your documents with vector similarity and provides verified answers with exact source citations.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               {[
@@ -196,7 +335,7 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
                   key={suggestion}
                   type="button"
                   onClick={() => handleSend(suggestion)}
-                  className="rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2 text-xs font-medium text-slate-700 hover:border-blue-300 hover:bg-blue-50/80 hover:text-blue-700"
+                  className="rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2 text-xs font-medium text-slate-700 hover:border-blue-300 hover:bg-blue-50/80 hover:text-blue-700 transition"
                 >
                   "{suggestion}"
                 </button>
@@ -285,6 +424,17 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
       <CitationPreviewDrawer
         citation={selectedCitation}
         onClose={() => setSelectedCitation(null)}
+      />
+
+      {/* Conversation History Drawer */}
+      <ConversationHistoryDrawer
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        conversations={conversations}
+        activeConversationId={activeConversationId}
+        onSelectConversation={handleSelectConversation}
+        onNewConversation={handleNewConversation}
+        onDeleteConversation={handleDeleteConversation}
       />
     </div>
   );

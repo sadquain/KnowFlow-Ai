@@ -20,14 +20,14 @@ export function getProviderConfig(): ProviderConfig {
 
   let chatModelName = process.env.OLLAMA_CHAT_MODEL || "llama3.2";
   if (aiProvider === "gemini") {
-    chatModelName = process.env.GEMINI_CHAT_MODEL || "gemini-1.5-flash";
+    chatModelName = process.env.GEMINI_CHAT_MODEL || "gemini-3.8-flash";
   } else if (aiProvider === "groq") {
     chatModelName = process.env.GROQ_CHAT_MODEL || "llama-3.3-70b-versatile";
   }
 
   let embedModelName = process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text";
   if (embeddingProvider === "gemini") {
-    embedModelName = process.env.GEMINI_EMBED_MODEL || "text-embedding-004";
+    embedModelName = process.env.GEMINI_EMBED_MODEL || "gemini-embedding-001";
   }
 
   return {
@@ -42,7 +42,10 @@ export function getProviderConfig(): ProviderConfig {
 /**
  * Returns a LangChain BaseChatModel configured for the active provider.
  */
-export function getChatModel(overrideProvider?: SupportedAIProvider): BaseChatModel {
+export function getChatModel(
+  overrideProvider?: SupportedAIProvider,
+  overrideModel?: string
+): BaseChatModel {
   const config = getProviderConfig();
   const provider = overrideProvider || config.aiProvider;
 
@@ -52,8 +55,9 @@ export function getChatModel(overrideProvider?: SupportedAIProvider): BaseChatMo
       if (!apiKey) {
         throw new Error("GEMINI_API_KEY is not configured in environment variables.");
       }
+      const modelName = overrideModel || process.env.GEMINI_CHAT_MODEL || "gemini-3.8-flash";
       return new ChatGoogleGenerativeAI({
-        model: config.chatModelName,
+        model: modelName,
         apiKey,
         temperature: 0.2,
       });
@@ -64,8 +68,9 @@ export function getChatModel(overrideProvider?: SupportedAIProvider): BaseChatMo
       if (!apiKey) {
         throw new Error("GROQ_API_KEY is not configured in environment variables.");
       }
+      const modelName = overrideModel || process.env.GROQ_CHAT_MODEL || "llama-3.3-70b-versatile";
       return new ChatGroq({
-        model: config.chatModelName,
+        model: modelName,
         apiKey,
         temperature: 0.2,
       });
@@ -73,8 +78,9 @@ export function getChatModel(overrideProvider?: SupportedAIProvider): BaseChatMo
 
     case "ollama":
     default: {
+      const modelName = overrideModel || process.env.OLLAMA_CHAT_MODEL || "llama3.2";
       return new ChatOllama({
-        model: config.chatModelName,
+        model: modelName,
         baseUrl: config.ollamaBaseUrl,
         temperature: 0.2,
       });
@@ -84,9 +90,12 @@ export function getChatModel(overrideProvider?: SupportedAIProvider): BaseChatMo
 
 /**
  * Returns a LangChain Embeddings instance configured for the active embedding provider.
- * Both nomic-embed-text (Ollama) and text-embedding-004 (Gemini) generate 768-dim vectors.
+ * Both nomic-embed-text (Ollama) and gemini-embedding-001 (Gemini) generate 768-dim vectors.
  */
-export function getEmbeddingModel(overrideProvider?: SupportedEmbeddingProvider): Embeddings {
+export function getEmbeddingModel(
+  overrideProvider?: SupportedEmbeddingProvider,
+  overrideModel?: string
+): Embeddings {
   const config = getProviderConfig();
   const provider = overrideProvider || config.embeddingProvider;
 
@@ -96,16 +105,18 @@ export function getEmbeddingModel(overrideProvider?: SupportedEmbeddingProvider)
       if (!apiKey) {
         throw new Error("GEMINI_API_KEY is not configured for embeddings.");
       }
+      const modelName = overrideModel || process.env.GEMINI_EMBED_MODEL || "gemini-embedding-001";
       return new GoogleGenerativeAIEmbeddings({
-        model: config.embedModelName,
+        model: modelName,
         apiKey,
       });
     }
 
     case "ollama":
     default: {
+      const modelName = overrideModel || process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text";
       return new OllamaEmbeddings({
-        model: config.embedModelName,
+        model: modelName,
         baseUrl: config.ollamaBaseUrl,
       });
     }
