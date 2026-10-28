@@ -15,7 +15,7 @@ import {
   Legend,
 } from "recharts";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { FileText, BotMessageSquare, Clock, Layers } from "lucide-react";
+import { FileText, BotMessageSquare, Clock, Layers, Activity } from "lucide-react";
 
 interface AnalyticsMetrics {
   totalDocuments: number;
@@ -27,16 +27,28 @@ interface AnalyticsMetrics {
   successfulQueries: number;
   failedQueries: number;
   averageLatencyMs: number;
+  totalPromptTokens?: number;
+  totalCompletionTokens?: number;
+  totalTokens?: number;
+}
+
+export interface TelemetryRecord {
+  id: string;
+  provider: string;
+  model: string;
+  latency_ms: number;
+  status: string;
+  created_at: string;
 }
 
 interface AnalyticsViewProps {
   metrics: AnalyticsMetrics;
-  recentUsage?: unknown[];
+  recentUsage?: TelemetryRecord[];
 }
 
 const PIE_COLORS = ["#10B981", "#06B6D4", "#EF4444"];
 
-export function AnalyticsView({ metrics }: AnalyticsViewProps) {
+export function AnalyticsView({ metrics, recentUsage = [] }: AnalyticsViewProps) {
   const documentStatusData = [
     { name: "Ready", value: metrics.readyDocuments },
     { name: "Processing", value: metrics.processingDocuments },
@@ -141,7 +153,10 @@ export function AnalyticsView({ metrics }: AnalyticsViewProps) {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={queryOutcomeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart
+                  data={queryOutcomeData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                   <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#64748B" }} tickLine={false} />
                   <YAxis tick={{ fontSize: 12, fill: "#64748B" }} tickLine={false} />
@@ -160,6 +175,57 @@ export function AnalyticsView({ metrics }: AnalyticsViewProps) {
           </div>
         </div>
       </div>
+
+      {/* Recent Telemetry Log Table */}
+      {recentUsage.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
+          <div className="flex items-center gap-2 mb-4">
+            <Activity className="h-4 w-4 text-blue-600" />
+            <h2 className="text-base font-bold text-slate-900">Recent AI Telemetry Events</h2>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-400 uppercase tracking-wider font-semibold">
+                  <th className="pb-3 pr-4">Provider</th>
+                  <th className="pb-3 pr-4">Model</th>
+                  <th className="pb-3 pr-4">Latency</th>
+                  <th className="pb-3 pr-4">Status</th>
+                  <th className="pb-3">Timestamp</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {recentUsage.map((u) => (
+                  <tr key={u.id} className="hover:bg-slate-50/50">
+                    <td className="py-2.5 pr-4 font-semibold capitalize text-slate-900">
+                      {u.provider}
+                    </td>
+                    <td className="py-2.5 pr-4 font-mono text-[11px] text-slate-600">{u.model}</td>
+                    <td className="py-2.5 pr-4 font-mono text-slate-600">
+                      {u.latency_ms ? `${u.latency_ms}ms` : "-"}
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                          u.status === "success"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {u.status}
+                      </span>
+                    </td>
+                    <td className="py-2.5 text-slate-400 text-[11px]">
+                      {new Date(u.created_at).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

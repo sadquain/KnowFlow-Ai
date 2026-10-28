@@ -10,10 +10,10 @@ import {
   BarChart3,
   Settings,
   Sparkles,
-  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/components/providers/workspace-provider";
+import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher";
 
 interface SidebarProps {
   currentWorkspaceId?: string;
@@ -23,7 +23,7 @@ interface SidebarProps {
 
 export function Sidebar({ currentWorkspaceId, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { currentWorkspace, workspaceId } = useWorkspace();
+  const { workspaceId } = useWorkspace();
   const activeWsId = workspaceId || currentWorkspaceId || "";
 
   const navItems = [
@@ -93,18 +93,8 @@ export function Sidebar({ currentWorkspaceId, isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Workspace Quick Selector */}
-        <div className="px-4 py-4">
-          <div className="flex items-center gap-2.5 rounded-lg border border-slate-200/80 bg-slate-50/70 p-2.5 text-xs text-slate-700">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-100 text-blue-700">
-              <Layers className="h-3.5 w-3.5" />
-            </div>
-            <div className="flex-1 truncate">
-              <p className="font-semibold text-slate-800 truncate">
-                {currentWorkspace?.name || "Workspace"}
-              </p>
-              <p className="text-[10px] text-slate-500">pgvector · RLS active</p>
-            </div>
-          </div>
+        <div className="px-4 py-3">
+          <WorkspaceSwitcher variant="sidebar" />
         </div>
 
         {/* Navigation Items */}

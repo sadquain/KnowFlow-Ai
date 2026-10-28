@@ -217,6 +217,24 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
       status: "success",
     });
 
+    // Persist assistant message
+    let insufficientMsgId: string | undefined;
+    try {
+      const { data: savedMsg } = await supabase
+        .from("messages")
+        .insert({
+          conversation_id: convId,
+          workspace_id: options.workspaceId,
+          role: "assistant",
+          content: insufficientMsg,
+        })
+        .select("id")
+        .single();
+      insufficientMsgId = savedMsg?.id;
+    } catch (err) {
+      console.error("[rag-service] Error persisting insufficient assistant message:", err);
+    }
+
     const staticStream = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(
@@ -229,7 +247,13 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
           encoder.encode(`data: ${JSON.stringify({ type: "token", token: insufficientMsg })}\n\n`)
         );
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: "done", conversationId: convId })}\n\n`)
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: "done",
+              conversationId: convId,
+              messageId: insufficientMsgId,
+            })}\n\n`
+          )
         );
         controller.close();
       },
@@ -290,6 +314,8 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
 
         const latencyMs = Date.now() - startTime;
 
+        let assistantMsgId: string | undefined;
+
         // Persist assistant message
         try {
           const { data: assistantMsg } = await supabase
@@ -302,6 +328,8 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
             })
             .select()
             .single();
+
+          assistantMsgId = assistantMsg?.id;
 
           if (assistantMsg && citations.length > 0) {
             const sourcesToInsert = citations
@@ -336,6 +364,7 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
             `data: ${JSON.stringify({
               type: "done",
               conversationId: convId,
+              messageId: assistantMsgId,
               usage: {
                 latency_ms: latencyMs,
                 provider: activeProvider,

@@ -9,7 +9,7 @@ interface DashboardHeroProps {
   workspaceId?: string;
 }
 
-export function DashboardHero({ onOpenUpload, workspaceId = "default-ws" }: DashboardHeroProps) {
+export function DashboardHero({ onOpenUpload, workspaceId }: DashboardHeroProps) {
   return (
     <section
       className="relative overflow-hidden rounded-2xl border border-blue-100 bg-linear-to-br from-white via-blue-50/40 to-violet-50/50 p-6 shadow-xs sm:p-8 md:p-10"
@@ -52,7 +52,7 @@ export function DashboardHero({ onOpenUpload, workspaceId = "default-ws" }: Dash
         {/* Action CTAs */}
         <div className="mt-8 flex flex-wrap items-center gap-3.5">
           <Link
-            href={`/chat?ws=${workspaceId}`}
+            href={workspaceId ? `/chat?ws=${workspaceId}` : "/chat"}
             className="inline-flex items-center gap-2 rounded-xl bg-linear-to-r from-blue-600 to-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-blue-500/25 transition-all hover:opacity-95 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-blue-600"
           >
             <Sparkles className="h-4 w-4" />

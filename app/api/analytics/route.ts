@@ -11,65 +11,120 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Missing workspaceId query parameter." }, { status: 400 });
     }
 
-    // Verify authenticated caller belongs to this workspace
+    // Verify authenticated caller belongs to this workspace (RLS client)
     const { supabase } = await requireWorkspaceMember(workspaceId);
 
-    // 1. Total documents count & breakdown by status using user-scoped client
-    const { data: docs, error: docsError } = await supabase
-      .from("documents")
-      .select("id, status, file_type, chunk_count, created_at, title")
-      .eq("workspace_id", workspaceId);
+    // 1. Real SQL count aggregates for documents using exact head counts
+    const [
+      { count: totalDocs, error: totalDocsErr },
+      { count: readyDocs },
+      { count: processingDocs },
+      { count: failedDocs },
+      { count: totalChunks },
+    ] = await Promise.all([
+      supabase.from("documents").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId),
+      supabase.from("documents").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("status", "ready"),
+      supabase.from("documents").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("status", "processing"),
+      supabase.from("documents").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("status", "failed"),
+      supabase.from("document_chunks").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId),
+    ]);
 
-    if (docsError) {
-      console.error("[GET /api/analytics] Documents query error:", docsError);
-      return NextResponse.json({ error: docsError.message }, { status: 500 });
+    if (totalDocsErr) {
+      console.error("[GET /api/analytics] Documents count error:", totalDocsErr);
+      return NextResponse.json({ error: totalDocsErr.message }, { status: 500 });
     }
 
-    const activeDocs = docs || [];
-    const totalDocs = activeDocs.length;
-    const readyDocs = activeDocs.filter((d) => d.status === "ready").length;
-    const processingDocs = activeDocs.filter((d) => d.status === "processing").length;
-    const failedDocs = activeDocs.filter((d) => d.status === "failed").length;
-    const totalChunks = activeDocs.reduce((acc, d) => acc + (d.chunk_count || 0), 0);
+    // 2. Real SQL count aggregates for AI usage telemetry
+    const [
+      { count: totalQueries, error: totalQueriesErr },
+      { count: successfulQueries },
+      { count: failedQueries },
+    ] = await Promise.all([
+      supabase.from("ai_usage").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId),
+      supabase.from("ai_usage").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("status", "success"),
+      supabase.from("ai_usage").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId).in("status", ["failed", "cancelled"]),
+    ]);
 
-    // 2. AI Usage metrics using user-scoped client
-    const { data: usage, error: usageError } = await supabase
+    if (totalQueriesErr) {
+      console.error("[GET /api/analytics] AI usage count error:", totalQueriesErr);
+      return NextResponse.json({ error: totalQueriesErr.message }, { status: 500 });
+    }
+
+    // 3. Compute accurate average latency and token totals
+    const { data: usageTelemetry } = await supabase
+      .from("ai_usage")
+      .select("latency_ms, prompt_tokens, completion_tokens, total_tokens, provider, model, status")
+      .eq("workspace_id", workspaceId);
+
+    let avgLatency = 0;
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+    const providerCounts: Record<string, number> = {};
+
+    if (usageTelemetry && usageTelemetry.length > 0) {
+      const successfulRuns = usageTelemetry.filter((u) => u.status === "success" && typeof u.latency_ms === "number");
+      if (successfulRuns.length > 0) {
+        const sumLatency = successfulRuns.reduce((acc, u) => acc + (u.latency_ms || 0), 0);
+        avgLatency = Math.round(sumLatency / successfulRuns.length);
+      }
+
+      for (const u of usageTelemetry) {
+        totalPromptTokens += u.prompt_tokens || 0;
+        totalCompletionTokens += u.completion_tokens || 0;
+        const p = u.provider || "unknown";
+        providerCounts[p] = (providerCounts[p] || 0) + 1;
+      }
+    }
+
+    // 4. File type distribution from documents
+    const { data: docTypes } = await supabase
+      .from("documents")
+      .select("file_type")
+      .eq("workspace_id", workspaceId);
+
+    const typeDistribution: Record<string, number> = {};
+    if (docTypes) {
+      for (const d of docTypes) {
+        const t = d.file_type?.toLowerCase() || "other";
+        const normalized = t.includes("pdf")
+          ? "PDF"
+          : t.includes("word") || t.includes("docx")
+          ? "DOCX"
+          : t.includes("markdown") || t.includes("md")
+          ? "Markdown"
+          : t.includes("plain") || t.includes("txt")
+          ? "TXT"
+          : "Other";
+        typeDistribution[normalized] = (typeDistribution[normalized] || 0) + 1;
+      }
+    }
+
+    // 5. Recent usage log (for telemetry table view)
+    const { data: recentUsage } = await supabase
       .from("ai_usage")
       .select("id, provider, model, latency_ms, status, created_at")
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false })
-      .limit(100);
-
-    if (usageError) {
-      console.error("[GET /api/analytics] AI usage query error:", usageError);
-      return NextResponse.json({ error: usageError.message }, { status: 500 });
-    }
-
-    const totalQueries = usage?.length || 0;
-    const successfulQueries = usage?.filter((u) => u.status === "success").length || 0;
-    const failedQueries =
-      usage?.filter((u) => u.status === "failed" || u.status === "cancelled").length || 0;
-    const avgLatency =
-      totalQueries > 0
-        ? Math.round(
-            (usage?.reduce((acc, u) => acc + (u.latency_ms || 0), 0) || 0) / totalQueries
-          )
-        : 0;
+      .limit(10);
 
     return NextResponse.json({
       metrics: {
-        totalDocuments: totalDocs,
-        readyDocuments: readyDocs,
-        processingDocuments: processingDocs,
-        failedDocuments: failedDocs,
-        totalChunks,
-        totalQueries,
-        successfulQueries,
-        failedQueries,
+        totalDocuments: totalDocs || 0,
+        readyDocuments: readyDocs || 0,
+        processingDocuments: processingDocs || 0,
+        failedDocuments: failedDocs || 0,
+        totalChunks: totalChunks || 0,
+        totalQueries: totalQueries || 0,
+        successfulQueries: successfulQueries || 0,
+        failedQueries: failedQueries || 0,
         averageLatencyMs: avgLatency,
+        totalPromptTokens,
+        totalCompletionTokens,
+        totalTokens: totalPromptTokens + totalCompletionTokens,
       },
-      recentDocuments: activeDocs.slice(0, 5),
-      recentUsage: usage?.slice(0, 5) || [],
+      typeDistribution,
+      providerCounts,
+      recentUsage: recentUsage || [],
     });
   } catch (err: unknown) {
     if (err instanceof AuthError) {

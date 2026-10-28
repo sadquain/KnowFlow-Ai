@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { X, Lock, Mail, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -142,9 +143,20 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-slate-700">
+                Password
+              </label>
+              {!isSignUp && (
+                <Link
+                  href="/forgot-password"
+                  onClick={onClose}
+                  className="text-[11px] font-medium text-blue-600 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              )}
+            </div>
             <div className="relative">
               <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <input

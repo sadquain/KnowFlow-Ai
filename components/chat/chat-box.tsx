@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Square, AlertCircle, Sparkles, History, Plus } from "lucide-react";
+import { Send, Square, AlertCircle, Sparkles, History, Plus, FileText } from "lucide-react";
 import { MessageItem, type ChatMessage } from "./message-item";
 import { CitationPreviewDrawer } from "./citation-preview-drawer";
 import { ModelSelector } from "./model-selector";
@@ -41,8 +41,35 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
+  // Document Source Filter
+  const [workspaceDocs, setWorkspaceDocs] = useState<{ id: string; title: string }[]>([]);
+  const [filterDocId, setFilterDocId] = useState<string>("all");
+
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch available ready documents for source filtering
+  useEffect(() => {
+    let ignore = false;
+    async function loadWorkspaceDocs() {
+      try {
+        const res = await fetch(`/api/documents?workspaceId=${workspaceId}`);
+        if (res.ok && !ignore) {
+          const data = await res.json();
+          const readyDocs = (data.documents || [])
+            .filter((d: { status: string }) => d.status === "ready")
+            .map((d: { id: string; title: string }) => ({ id: d.id, title: d.title }));
+          setWorkspaceDocs(readyDocs);
+        }
+      } catch {
+        // Ignored
+      }
+    }
+    loadWorkspaceDocs();
+    return () => {
+      ignore = true;
+    };
+  }, [workspaceId]);
 
   // Fetch conversations for workspace
   const loadConversations = useCallback(async () => {
@@ -174,6 +201,7 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
           conversationId: activeConversationId,
           provider: selectedProvider,
           model: selectedModel,
+          documentIds: filterDocId !== "all" ? [filterDocId] : undefined,
         }),
         signal: controller.signal,
       });
@@ -192,6 +220,7 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
       const streamState = {
         content: "",
         citations: [] as GroundedCitation[],
+        messageId: undefined as string | undefined,
       };
 
       while (true) {
@@ -212,6 +241,8 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
                 streamState.citations = data.citations;
               } else if (data.type === "token") {
                 streamState.content += data.token;
+              } else if (data.type === "done" && data.messageId) {
+                streamState.messageId = data.messageId;
               } else if (data.type === "error") {
                 setErrorMsg(data.error);
               }
@@ -239,10 +270,16 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
         }
       }
 
-      // Mark generation complete
+      // Mark generation complete and assign persisted DB messageId if available
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === assistantMsgId ? { ...msg, isStreaming: false } : msg
+          msg.id === assistantMsgId
+            ? {
+                ...msg,
+                id: streamState.messageId || msg.id,
+                isStreaming: false,
+              }
+            : msg
         )
       );
       setLiveAnnouncement(
@@ -286,6 +323,22 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
     }
   };
 
+  const handleFeedback = async (messageId: string, isPositive: boolean) => {
+    try {
+      await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId,
+          messageId,
+          isPositive,
+        }),
+      });
+    } catch (err) {
+      console.error("[chat-box] Failed to submit feedback:", err);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -295,15 +348,35 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
 
   return (
     <div className="flex h-[calc(100vh-10rem)] flex-col rounded-2xl border border-slate-200 bg-white shadow-xs">
-      {/* Top Toolbar: Model Selector & Chat Thread Controls */}
+      {/* Top Toolbar: Model Selector, Document Filter & Thread Controls */}
       <div className="flex flex-wrap items-center justify-between border-b border-slate-100 px-4 py-2.5 gap-2 bg-slate-50/50 rounded-t-2xl">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ModelSelector
             selectedProvider={selectedProvider}
             selectedModel={selectedModel}
             onSelect={handleModelChange}
             disabled={isGenerating}
           />
+
+          {workspaceDocs.length > 0 && (
+            <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 shadow-2xs">
+              <FileText className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+              <select
+                value={filterDocId}
+                onChange={(e) => setFilterDocId(e.target.value)}
+                disabled={isGenerating}
+                aria-label="Filter knowledge source document"
+                className="bg-transparent text-xs text-slate-700 focus:outline-none max-w-[130px] truncate"
+              >
+                <option value="all">All Documents ({workspaceDocs.length})</option>
+                {workspaceDocs.map((doc) => (
+                  <option key={doc.id} value={doc.id}>
+                    {doc.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -380,6 +453,7 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
                 const lastUser = [...messages].reverse().find((m) => m.role === "user");
                 if (lastUser) handleSend(lastUser.content);
               }}
+              onFeedback={(isPos) => handleFeedback(message.id, isPos)}
             />
           ))
         )}

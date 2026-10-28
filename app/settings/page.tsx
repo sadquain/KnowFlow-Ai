@@ -3,6 +3,7 @@
 import React from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Settings, Shield, Cpu, Database, CheckCircle2 } from "lucide-react";
+import { WorkspaceSettingsSection } from "@/components/workspaces/workspace-settings-section";
 
 export default function SettingsPage() {
   return (
@@ -18,9 +19,12 @@ export default function SettingsPage() {
             </h1>
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            Configure AI provider fallbacks, pgvector dimensions, and environment secrets.
+            Manage your workspace team members, AI provider fallbacks, pgvector dimensions, and environment secrets.
           </p>
         </div>
+
+        {/* Workspace Management Section */}
+        <WorkspaceSettingsSection />
 
         {/* AI Engine Configuration Card */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">

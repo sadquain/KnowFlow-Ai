@@ -241,6 +241,16 @@ function LandingContent() {
             <Layers className="h-4 w-4 text-blue-500" />
             <span>KnowFlow AI • Enterprise RAG System</span>
           </div>
+
+          <div className="flex items-center gap-6">
+            <Link href="/privacy" className="hover:text-slate-300 transition">
+              Privacy Policy (Draft)
+            </Link>
+            <Link href="/terms" className="hover:text-slate-300 transition">
+              Terms of Service (Draft)
+            </Link>
+          </div>
+
           <p>© {new Date().getFullYear()} KnowFlow AI. All rights reserved.</p>
         </div>
       </footer>

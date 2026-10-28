@@ -115,7 +115,7 @@ function DashboardContent() {
   return (
     <div className="space-y-8">
       {/* Hero Banner */}
-      <DashboardHero onOpenUpload={() => setIsUploadOpen(true)} />
+      <DashboardHero onOpenUpload={() => setIsUploadOpen(true)} workspaceId={workspaceId || undefined} />
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
