@@ -22,15 +22,18 @@ export default function PrivacyPage() {
         </div>
 
         {/* Draft Notice Banner */}
-        <div className="mb-8 flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200" role="alert">
+        <div
+          className="mb-8 flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200"
+          role="alert"
+        >
           <AlertCircle className="h-5 w-5 shrink-0 text-amber-400 mt-0.5" />
           <div>
             <span className="font-bold uppercase tracking-wider text-amber-300">
               Draft Document — For Demonstration Only
             </span>
             <p className="mt-1 text-amber-200/90 leading-relaxed">
-              This document is a technical compliance placeholder illustrating KnowFlow AI&apos;s data
-              isolation and governance architecture. It does not constitute legal counsel.
+              This document is a technical compliance placeholder illustrating KnowFlow AI&apos;s
+              data isolation and governance architecture. It does not constitute legal counsel.
             </p>
           </div>
         </div>
@@ -43,7 +46,9 @@ export default function PrivacyPage() {
             <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
               Privacy Policy &amp; Data Governance
             </h1>
-            <p className="mt-2 text-xs text-slate-400">Last updated: October 2026 • Status: Draft</p>
+            <p className="mt-2 text-xs text-slate-400">
+              Last updated: October 2026 • Status: Draft
+            </p>
           </div>
 
           <section className="space-y-3">
@@ -52,10 +57,11 @@ export default function PrivacyPage() {
               <h2>1. Multi-Tenant Isolation &amp; Row-Level Security</h2>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
-              KnowFlow AI enforces tenant isolation directly inside PostgreSQL using Supabase Row-Level
-              Security (RLS). All uploaded documents, extracted chunk vectors, conversation logs, and
-              rate-limit buckets are strictly partitioned by authenticated workspace membership. Cross-tenant
-              queries are denied at the database query planner level.
+              KnowFlow AI enforces tenant isolation directly inside PostgreSQL using Supabase
+              Row-Level Security (RLS). All uploaded documents, extracted chunk vectors,
+              conversation logs, and rate-limit buckets are strictly partitioned by authenticated
+              workspace membership. Cross-tenant queries are denied at the database query planner
+              level.
             </p>
           </section>
 
@@ -65,28 +71,34 @@ export default function PrivacyPage() {
               <h2>2. Vector Embeddings &amp; AI Provider Privacy</h2>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Document chunks are embedded using high-dimensional vector representations stored in pgvector.
-              When invoking third-party inference providers (Google Gemini, Groq, or local Ollama), only the
-              specific relevant snippets retrieved for the user&apos;s query are transmitted in the context prompt.
-              We do not permit foundational models to train on customer workspace data.
+              Document chunks are embedded using high-dimensional vector representations stored in
+              pgvector. When invoking third-party inference providers (Google Gemini, Groq, or local
+              Ollama), only the specific relevant snippets retrieved for the user&apos;s query are
+              transmitted in the context prompt. We do not permit foundational models to train on
+              customer workspace data.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-white">3. Data Retention &amp; Deletion Rights</h2>
+            <h2 className="text-sm font-semibold text-white">
+              3. Data Retention &amp; Deletion Rights
+            </h2>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Workspace owners possess the right to delete documents or delete entire workspaces at any time.
-              Deleting a workspace cascades immediately: all file storage objects in Supabase Storage, database
-              records in PostgreSQL, and pgvector embeddings are permanently expunged.
+              Workspace owners possess the right to delete documents or delete entire workspaces at
+              any time. Deleting a workspace cascades immediately: all file storage objects in
+              Supabase Storage, database records in PostgreSQL, and pgvector embeddings are
+              permanently expunged.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-white">4. User Authentication &amp; Telemetry</h2>
+            <h2 className="text-sm font-semibold text-white">
+              4. User Authentication &amp; Telemetry
+            </h2>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Authentication is managed through Supabase Auth with encrypted JWT sessions. Usage telemetry
-              (token counts and latency) is retained solely for internal performance monitoring and rate-limiting
-              enforcement.
+              Authentication is managed through Supabase Auth with encrypted JWT sessions. Usage
+              telemetry (token counts and latency) is retained solely for internal performance
+              monitoring and rate-limiting enforcement.
             </p>
           </section>
         </div>

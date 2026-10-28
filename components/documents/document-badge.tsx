@@ -44,7 +44,7 @@ interface DocumentTypeBadgeProps {
 }
 
 export function DocumentTypeBadge({ type }: DocumentTypeBadgeProps) {
-  const norm = type.toLowerCase().replace(".", "");
+  const norm = (type || "").toLowerCase().replace(".", "");
 
   switch (norm) {
     case "pdf":

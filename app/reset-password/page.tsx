@@ -62,7 +62,10 @@ export default function ResetPasswordPage() {
         </p>
 
         {error && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300" role="alert">
+          <div
+            className="mt-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300"
+            role="alert"
+          >
             <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
             <span>{error}</span>
           </div>
@@ -86,7 +89,10 @@ export default function ResetPasswordPage() {
         ) : (
           <form onSubmit={handleUpdate} className="mt-6 space-y-4">
             <div>
-              <label htmlFor="new-password" className="block text-xs font-medium text-slate-300 mb-1.5">
+              <label
+                htmlFor="new-password"
+                className="block text-xs font-medium text-slate-300 mb-1.5"
+              >
                 New Password
               </label>
               <div className="relative">
@@ -105,7 +111,10 @@ export default function ResetPasswordPage() {
             </div>
 
             <div>
-              <label htmlFor="confirm-password" className="block text-xs font-medium text-slate-300 mb-1.5">
+              <label
+                htmlFor="confirm-password"
+                className="block text-xs font-medium text-slate-300 mb-1.5"
+              >
                 Confirm Password
               </label>
               <div className="relative">

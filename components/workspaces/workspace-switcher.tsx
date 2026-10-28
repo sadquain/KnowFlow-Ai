@@ -12,8 +12,7 @@ interface WorkspaceSwitcherProps {
 }
 
 export function WorkspaceSwitcher({ className, variant = "sidebar" }: WorkspaceSwitcherProps) {
-  const { workspaces, currentWorkspace, setCurrentWorkspaceId, refreshWorkspaces } =
-    useWorkspace();
+  const { workspaces, currentWorkspace, setCurrentWorkspaceId, refreshWorkspaces } = useWorkspace();
   const [isOpen, setIsOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");

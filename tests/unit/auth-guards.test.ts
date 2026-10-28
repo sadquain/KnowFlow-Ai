@@ -51,7 +51,9 @@ describe("Auth Guards & Permissions Suite", () => {
     it("should reject with 401 when no active session exists", async () => {
       const mockSupabase = {
         auth: {
-          getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: new Error("No session") }),
+          getUser: vi
+            .fn()
+            .mockResolvedValue({ data: { user: null }, error: new Error("No session") }),
         },
       };
       vi.mocked(createClient).mockResolvedValue(mockSupabase as unknown as SupabaseClient);

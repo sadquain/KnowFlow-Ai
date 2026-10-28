@@ -81,7 +81,9 @@ export function DocumentCard({
       <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-slate-500">
         <div className="flex items-center gap-1.5">
           <Layers className="h-3.5 w-3.5 text-slate-400" />
-          <span>{document.chunk_count} {document.chunk_count === 1 ? "chunk" : "chunks"}</span>
+          <span>
+            {document.chunk_count} {document.chunk_count === 1 ? "chunk" : "chunks"}
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
           <FileText className="h-3.5 w-3.5 text-slate-400" />
@@ -94,7 +96,10 @@ export function DocumentCard({
       </div>
 
       {document.error_message && (
-        <div className="mt-3 flex items-center justify-between rounded-lg bg-red-50 p-2 text-xs text-red-600" role="alert">
+        <div
+          className="mt-3 flex items-center justify-between rounded-lg bg-red-50 p-2 text-xs text-red-600"
+          role="alert"
+        >
           <span className="line-clamp-2">{document.error_message}</span>
           {onRetry && (
             <button

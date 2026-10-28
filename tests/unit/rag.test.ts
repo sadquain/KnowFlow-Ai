@@ -15,7 +15,9 @@ describe("RAG Question Sanitization & Safety Suite", () => {
 
   it("should throw an error when question exceeds 1000 characters", () => {
     const longQuestion = "a".repeat(1001);
-    expect(() => sanitizeQuestion(longQuestion)).toThrow("Question exceeds maximum length of 1,000 characters.");
+    expect(() => sanitizeQuestion(longQuestion)).toThrow(
+      "Question exceeds maximum length of 1,000 characters."
+    );
   });
 
   it("should preserve special characters and unicode within query boundaries", () => {

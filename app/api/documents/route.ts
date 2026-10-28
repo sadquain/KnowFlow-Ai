@@ -28,6 +28,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ documents: data || [] });
   } catch (err: unknown) {
+    if ((err as { digest?: string })?.digest?.startsWith("NEXT_")) {
+      throw err;
+    }
     if (err instanceof AuthError) {
       return NextResponse.json({ error: err.message }, { status: err.statusCode });
     }

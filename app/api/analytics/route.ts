@@ -22,11 +22,29 @@ export async function GET(req: NextRequest) {
       { count: failedDocs },
       { count: totalChunks },
     ] = await Promise.all([
-      supabase.from("documents").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId),
-      supabase.from("documents").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("status", "ready"),
-      supabase.from("documents").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("status", "processing"),
-      supabase.from("documents").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("status", "failed"),
-      supabase.from("document_chunks").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId),
+      supabase
+        .from("documents")
+        .select("*", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId),
+      supabase
+        .from("documents")
+        .select("*", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId)
+        .eq("status", "ready"),
+      supabase
+        .from("documents")
+        .select("*", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId)
+        .eq("status", "processing"),
+      supabase
+        .from("documents")
+        .select("*", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId)
+        .eq("status", "failed"),
+      supabase
+        .from("document_chunks")
+        .select("*", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId),
     ]);
 
     if (totalDocsErr) {
@@ -40,9 +58,20 @@ export async function GET(req: NextRequest) {
       { count: successfulQueries },
       { count: failedQueries },
     ] = await Promise.all([
-      supabase.from("ai_usage").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId),
-      supabase.from("ai_usage").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("status", "success"),
-      supabase.from("ai_usage").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId).in("status", ["failed", "cancelled"]),
+      supabase
+        .from("ai_usage")
+        .select("*", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId),
+      supabase
+        .from("ai_usage")
+        .select("*", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId)
+        .eq("status", "success"),
+      supabase
+        .from("ai_usage")
+        .select("*", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId)
+        .in("status", ["failed", "cancelled"]),
     ]);
 
     if (totalQueriesErr) {
@@ -62,7 +91,9 @@ export async function GET(req: NextRequest) {
     const providerCounts: Record<string, number> = {};
 
     if (usageTelemetry && usageTelemetry.length > 0) {
-      const successfulRuns = usageTelemetry.filter((u) => u.status === "success" && typeof u.latency_ms === "number");
+      const successfulRuns = usageTelemetry.filter(
+        (u) => u.status === "success" && typeof u.latency_ms === "number"
+      );
       if (successfulRuns.length > 0) {
         const sumLatency = successfulRuns.reduce((acc, u) => acc + (u.latency_ms || 0), 0);
         avgLatency = Math.round(sumLatency / successfulRuns.length);
@@ -89,12 +120,12 @@ export async function GET(req: NextRequest) {
         const normalized = t.includes("pdf")
           ? "PDF"
           : t.includes("word") || t.includes("docx")
-          ? "DOCX"
-          : t.includes("markdown") || t.includes("md")
-          ? "Markdown"
-          : t.includes("plain") || t.includes("txt")
-          ? "TXT"
-          : "Other";
+            ? "DOCX"
+            : t.includes("markdown") || t.includes("md")
+              ? "Markdown"
+              : t.includes("plain") || t.includes("txt")
+                ? "TXT"
+                : "Other";
         typeDistribution[normalized] = (typeDistribution[normalized] || 0) + 1;
       }
     }
@@ -127,6 +158,9 @@ export async function GET(req: NextRequest) {
       recentUsage: recentUsage || [],
     });
   } catch (err: unknown) {
+    if ((err as { digest?: string })?.digest?.startsWith("NEXT_")) {
+      throw err;
+    }
     if (err instanceof AuthError) {
       return NextResponse.json({ error: err.message }, { status: err.statusCode });
     }

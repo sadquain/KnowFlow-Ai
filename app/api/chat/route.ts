@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { executeRAGStream } from "@/services/rag-service";
-import { requireWorkspaceMember, requireConversationAccess } from "@/lib/auth/require-workspace-member";
+import {
+  requireWorkspaceMember,
+  requireConversationAccess,
+} from "@/lib/auth/require-workspace-member";
 import { AuthError } from "@/lib/auth/require-user";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -18,10 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!workspaceId || typeof workspaceId !== "string") {
-      return NextResponse.json(
-        { error: "A valid 'workspaceId' is required." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "A valid 'workspaceId' is required." }, { status: 400 });
     }
 
     // 1. Verify caller is authenticated and belongs to the workspace

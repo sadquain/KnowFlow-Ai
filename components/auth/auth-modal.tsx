@@ -88,19 +88,27 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
               {isSignUp ? "Create KnowFlow Account" : "Sign In to KnowFlow AI"}
             </h2>
             <p className="text-xs text-slate-500">
-              {isSignUp ? "Set up your workspace and user profile" : "Access your private workspaces and document data"}
+              {isSignUp
+                ? "Set up your workspace and user profile"
+                : "Access your private workspaces and document data"}
             </p>
           </div>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700" role="alert">
+          <div
+            className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700"
+            role="alert"
+          >
             {error}
           </div>
         )}
 
         {message && (
-          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700" role="status">
+          <div
+            className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700"
+            role="status"
+          >
             {message}
           </div>
         )}
@@ -108,9 +116,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
         <form onSubmit={handleSubmit} className="space-y-3.5">
           {isSignUp && (
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Full Name
-              </label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
               <div className="relative">
                 <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <input
@@ -126,9 +132,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Email Address
-            </label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Email Address</label>
             <div className="relative">
               <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <input
@@ -144,9 +148,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-slate-700">
-                Password
-              </label>
+              <label className="block text-xs font-semibold text-slate-700">Password</label>
               {!isSignUp && (
                 <Link
                   href="/forgot-password"

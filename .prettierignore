@@ -1,0 +1,7 @@
+.next/
+node_modules/
+dist/
+coverage/
+package-lock.json
+*.log
+.system_generated/

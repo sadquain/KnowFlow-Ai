@@ -282,9 +282,7 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
             : msg
         )
       );
-      setLiveAnnouncement(
-        `AI response completed with ${streamState.citations.length} citations.`
-      );
+      setLiveAnnouncement(`AI response completed with ${streamState.citations.length} citations.`);
 
       // Refresh conversations list to update title
       loadConversations();
@@ -414,7 +412,11 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
       </div>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6" role="log" aria-label="Conversation history">
+      <div
+        className="flex-1 overflow-y-auto p-4 sm:p-6"
+        role="log"
+        aria-label="Conversation history"
+      >
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br from-blue-500 to-violet-600 text-white shadow-md shadow-blue-500/20">
@@ -424,7 +426,8 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
               Ask anything about your knowledge base
             </h2>
             <p className="mt-1 max-w-md text-xs text-slate-500 leading-relaxed">
-              KnowFlow AI searches your documents with vector similarity and provides verified answers with exact source citations.
+              KnowFlow AI searches your documents with vector similarity and provides verified
+              answers with exact source citations.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               {[
@@ -462,7 +465,10 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
 
       {/* Error Banner */}
       {errorMsg && (
-        <div className="mx-4 mb-2 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700" role="alert">
+        <div
+          className="mx-4 mb-2 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700"
+          role="alert"
+        >
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
             <span>{errorMsg}</span>

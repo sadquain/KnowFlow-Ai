@@ -57,10 +57,7 @@ export async function checkRateLimit(
         };
       }
 
-      await supabase
-        .from("rate_limits")
-        .update({ request_count: newCount })
-        .eq("id", existing.id);
+      await supabase.from("rate_limits").update({ request_count: newCount }).eq("id", existing.id);
 
       return {
         allowed: true,

@@ -1,29 +1,33 @@
-# KnowFlow AI ⚡ Turn Your Knowledge into Instant Answers
+# KnowFlow AI ⚡ Grounded RAG with pgvector & LangChain.js
 
-A production-grade, portfolio-ready AI SaaS platform that enables teams to upload enterprise documents, create isolated knowledge bases, and ask questions answered by LLMs through Retrieval-Augmented Generation (RAG) with verifiable citations and source grounding.
+A production-grade AI SaaS platform that enables teams to upload enterprise documents, create isolated knowledge bases, and ask questions answered by LLMs through Retrieval-Augmented Generation (RAG) with verifiable citations and source grounding.
 
 ---
 
 ## 🌟 Highlights
 
 - **Multi-Provider AI Engine (LangChain.js Orchestrated)**:
-  - **Local-first with Ollama** (`llama3`, `mxbai-embed-large` / `nomic-embed-text`) — zero API cost and 100% offline privacy.
-  - **Google Gemini** (`gemini-1.5-flash` + `text-embedding-004`) — high-speed, generous free-tier cloud option.
-  - **Groq** (`llama-3.3-70b-versatile` / `mixtral-8x7b-32768`) — ultra-low-latency LPUs.
+  - **Google Gemini** (`gemini-3.5-flash` + `gemini-embedding-001` with 768-dim embeddings) — high-speed, generous free-tier cloud inference.
+  - **Groq LPUs** (`openai/gpt-oss-120b` / `llama-3.3-70b-versatile`) — ultra-low-latency chat generation.
+  - **Local Ollama** (`llama3.2` + `nomic-embed-text`) — 100% offline privacy and zero API costs.
 - **Enterprise RAG Pipeline**:
-  - Vector similarity search powered by **Supabase PostgreSQL & `pgvector`** with HNSW indexing.
+  - Vector similarity search powered by **Supabase PostgreSQL & `pgvector`** (`vector(768)`) with HNSW indexing and `match_document_chunks` RPC.
   - Multi-format ingestion: **PDF** (page-aware text extraction), **DOCX** (via Mammoth), **Markdown**, and **Plain Text**.
-  - Intelligent chunking (500 tokens with 100-token overlaps) preserving document section headers and page metadata.
-  - Honest grounding: Refuses hallucination when retrieval cosine similarity falls below safety threshold.
-- **Modern Streaming UI**:
-  - Server-Sent Events (SSE) streaming answers in real-time.
+  - Intelligent chunking (1000 characters with 200-character overlaps) preserving section context and page metadata.
+  - Honest grounding: Refuses hallucination when retrieval cosine similarity falls below safety thresholds, using calibrated default thresholds (`0.35`) with an adaptive overview fallback (`0.25`).
+- **Modern Streaming UI & Observability**:
+  - Server-Sent Events (SSE) streaming tokens in real-time.
   - Interactive source citation cards displaying document name, page number, similarity score, and excerpt.
-  - Multi-workspace switcher and usage analytics dashboard.
+  - Document-level query filtering and failed document retry capabilities.
+  - Message feedback persistence via `POST /api/feedback` (thumbs up / thumbs down).
+  - PostgreSQL-backed rate limiting (`30 requests/minute`) with standard `429` status codes and `Retry-After` headers.
+  - Real SQL aggregate analytics and usage telemetry logging (`prompt_tokens`, `completion_tokens`, `latency_ms`).
 - **Inclusive Accessibility (WCAG 2.2 AA)**:
-  - Multi-modal state cues (icons + text + color coding), full keyboard navigation (`Tab`, `Escape`, arrow keys), ARIA live announcements, and high-contrast color palette.
+  - Multi-modal state cues (icons + text + color coding), full keyboard navigation (`Tab`, `Escape`, arrow keys), ARIA live announcements, high-contrast palette, and verified with `axe-core`.
 - **Strict Full-Stack Quality**:
-  - 100% TypeScript strict mode.
-  - Unit and component tests with **Vitest** and **React Testing Library**.
+  - 100% TypeScript strict mode, clean ESM (`"type": "module"`), self-hosted fonts.
+  - Zero mock data or synthetic fallback guarantees.
+  - Comprehensive unit and component tests with **Vitest**, **React Testing Library**, and **Playwright**.
   - Production-ready builds verified on **Next.js 16 (Turbopack)**.
 
 ---
@@ -34,13 +38,13 @@ A production-grade, portfolio-ready AI SaaS platform that enables teams to uploa
 flowchart TD
     User([User / Browser])
     UI[Next.js 16 App Router UI]
-    API_Doc[Upload & Processing API]
+    API_Doc[Upload & Ingestion API]
     API_Chat[Streaming RAG API]
     Parser[Document Parser: PDF / DOCX / MD / TXT]
     Chunker[Recursive Character Splitter]
-    Embed[Embedding Factory: Ollama / Gemini]
+    Embed[Gemini / Ollama 768-dim Embeddings]
     DB[(Supabase PostgreSQL + pgvector)]
-    LLM[LLM Factory: Ollama / Gemini / Groq]
+    LLM[LLM Engine: Gemini / Groq / Ollama]
 
     User -->|Upload File| UI
     UI --> API_Doc
@@ -49,8 +53,8 @@ flowchart TD
     User -->|Ask Question| UI
     UI --> API_Chat
     API_Chat --> Embed
-    Embed -->|Query Vector| DB
-    DB -->|Relevant Chunks + Metadata| API_Chat
+    Embed -->|Query Vector 768-dim| DB
+    DB -->|Relevant Chunks + Citations| API_Chat
     API_Chat --> LLM
     LLM -->|Stream Tokens + Citations| UI
 ```
@@ -59,17 +63,18 @@ flowchart TD
 
 ## 🛠️ Technology Stack
 
-| Layer | Technology |
-|---|---|
-| **Framework** | Next.js 16 (App Router, Turbopack) |
-| **Language** | TypeScript (Strict Mode) |
-| **Styling** | Tailwind CSS v4, Lucide Icons |
-| **UI Components** | Accessible Radix UI Primitives, Sonner (Toasts) |
-| **Forms & Validation** | React Hook Form, Zod |
+| Layer                   | Technology                                                   |
+| ----------------------- | ------------------------------------------------------------ |
+| **Framework**           | Next.js 16 (App Router, Turbopack, Cache Components)         |
+| **Language**            | TypeScript (Strict Mode, ESM `"type": "module"`)             |
+| **Styling**             | Tailwind CSS v4, Lucide Icons                                |
+| **UI Components**       | Accessible Radix UI Primitives, Sonner (Toasts)              |
+| **Forms & Validation**  | React Hook Form, Zod v4                                      |
 | **RAG & Orchestration** | LangChain.js (`@langchain/core`, `@langchain/textsplitters`) |
-| **Vector Database** | Supabase PostgreSQL with `pgvector` extension |
-| **Document Parsing** | `pdf-parse`, `mammoth` |
-| **Testing** | Vitest, React Testing Library, JSDOM |
+| **Vector Database**     | Supabase PostgreSQL with `pgvector` (`vector(768)`) & RLS    |
+| **Document Parsing**    | `pdf-parse`, `mammoth`                                       |
+| **Rate Limiting**       | PostgreSQL `rate_limits` table with sliding window grouping  |
+| **Testing**             | Vitest, React Testing Library, axe-core, Playwright          |
 
 ---
 
@@ -80,10 +85,10 @@ flowchart TD
 ```bash
 git clone https://github.com/your-username/knowflow-ai.git
 cd knowflow-ai
-npm install --legacy-peer-deps
+npm install
 ```
 
-### 2. Environment Variables
+### 2. Environment Configuration
 
 Copy the provided example file:
 
@@ -91,35 +96,47 @@ Copy the provided example file:
 cp .env.example .env.local
 ```
 
-Fill in your configuration:
+Configure your secrets in `.env.local`:
 
 ```env
-# AI Provider (ollama | gemini | groq)
-AI_PROVIDER=gemini
-AI_MODEL_NAME=gemini-1.5-flash
-EMBEDDING_PROVIDER=gemini
-EMBEDDING_MODEL_NAME=text-embedding-004
-
-# Keys (free tiers available)
-GOOGLE_API_KEY=your_google_ai_studio_key
-GROQ_API_KEY=your_groq_api_key
-
-# Ollama (Local)
-OLLAMA_BASE_URL=http://localhost:11434
-
-# Supabase (Database & pgvector)
+# Supabase Database & Auth (pgvector)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# AI Provider Configuration (default: gemini)
+AI_PROVIDER=gemini
+EMBEDDING_PROVIDER=gemini
+
+# Google Gemini (Free Tier)
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_CHAT_MODEL=gemini-3.5-flash
+GEMINI_EMBED_MODEL=gemini-embedding-001
+
+# Groq (Optional Free Tier for ultra-fast chat)
+GROQ_API_KEY=your_groq_api_key
+GROQ_CHAT_MODEL=openai/gpt-oss-120b
+
+# Ollama (Optional Local Offline Inference)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_CHAT_MODEL=llama3.2
+OLLAMA_EMBED_MODEL=nomic-embed-text
 ```
 
 ### 3. Database Migration
 
-Run the SQL migration in `supabase/migrations/20250101000000_knowflow_init.sql` inside your Supabase SQL Editor. This sets up:
-- `workspaces`, `documents`, and `document_chunks` tables
-- `pgvector` extension with 768-dimension embeddings
-- Match function `match_document_chunks` for fast cosine similarity retrieval
-- Row Level Security (RLS) policies
+Execute the database migrations in chronological order inside your Supabase SQL Editor:
+
+1. `supabase/migrations/20250101000000_knowflow_init.sql`
+2. `supabase/migrations/20260324000000_phase3_schema_security.sql`
+
+This establishes:
+
+- Multi-tenant `workspaces`, `workspace_members`, `documents`, and `document_chunks` tables
+- PostgreSQL `pgvector` extension configured for 768-dimensional embeddings
+- Hardened `match_document_chunks` stored procedure with `SECURITY INVOKER` and workspace membership verification
+- Sliding-window `rate_limits` table
+- Row-Level Security (RLS) policies on all tables
 
 ### 4. Run Development Server
 
@@ -132,7 +149,17 @@ Open [http://localhost:3000](http://localhost:3000) to access KnowFlow AI.
 ### 5. Run Automated Tests
 
 ```bash
+# Run unit, component, and accessibility test suites
 npm test
+
+# Run code quality linting
+npm run lint
+
+# Run TypeScript static typecheck
+npx tsc --noEmit
+
+# Run production build validation
+npm run build
 ```
 
 ---
@@ -143,58 +170,56 @@ npm test
 knowflow-ai/
 ├── app/
 │   ├── api/
-│   │   ├── analytics/        # Workspace statistics & chunk telemetry
-│   │   ├── chat/             # SSE streaming RAG endpoint
-│   │   ├── documents/        # Document CRUD & status checks
-│   │   ├── documents/upload/ # Multi-format document parser & indexer
-│   │   └── workspaces/       # Workspace isolation management
-│   ├── analytics/            # Analytics dashboard
-│   ├── chat/                 # Real-time Q&A interface with citations
-│   ├── dashboard/            # Overview workspace management
-│   ├── documents/            # Document management & file dropzone
-│   ├── settings/             # AI provider configuration & health checks
-│   ├── globals.css           # Design tokens, themes & accessibility styles
-│   ├── layout.tsx            # Root shell with persistent navigation
-│   └── page.tsx              # High-conversion product landing page
+│   │   ├── analytics/                # SQL aggregate telemetry & counts
+│   │   ├── chat/                     # Rate-limited SSE streaming RAG endpoint
+│   │   ├── conversations/            # Chat thread persistence & message history
+│   │   ├── documents/                # Document listing, retry, and deletion
+│   │   ├── documents/upload/         # Multi-format parser, chunker & vector indexer
+│   │   ├── feedback/                 # Message feedback persistence (thumbs up/down)
+│   │   └── workspaces/               # Workspace switcher, rename, members, and deletion
+│   ├── analytics/                    # Telemetry analytics dashboard
+│   ├── chat/                         # Interactive Q&A interface with source citations
+│   ├── dashboard/                    # Overview workspace management & quick actions
+│   ├── documents/                    # Document management, search & status filters
+│   ├── forgot-password/              # Secure password recovery request
+│   ├── reset-password/               # Password update confirmation
+│   ├── settings/                     # Workspace roster, provider & pgvector settings
+│   ├── privacy/                      # Data governance & privacy policy (draft)
+│   ├── terms/                        # Terms of service & AI output disclaimer (draft)
+│   ├── layout.tsx                    # Root shell with persistent navigation & self-hosted fonts
+│   └── page.tsx                      # Modern product landing page
 ├── components/
-│   ├── chat/                 # Chat interface, message list, citation cards
-│   ├── documents/            # Upload dropzone, file table, status badges
-│   └── ui/                   # Button, Card, Badge, Alert, Navigation
+│   ├── analytics/                    # Recharts visual telemetry & activity logs
+│   ├── auth/                         # Supabase authentication modal
+│   ├── chat/                         # Streaming chat box, citation badges, model selector
+│   ├── dashboard/                    # Hero action banner & stat metric cards
+│   ├── documents/                    # Upload dropzone, document cards, search & filter toolbar
+│   ├── navigation/                   # Accessible sidebar, header & quick switcher
+│   └── workspaces/                   # Workspace switcher & team management settings
 ├── docs/
-│   ├── accessibility.md      # WCAG 2.2 AA audit & implementations
-│   ├── architecture.md       # High-level architecture & design patterns
-│   ├── free-tier-limitations.md # Free quotas & graceful fallback handling
-│   ├── production-lessons.md # Real-world engineering learnings & edge cases
-│   ├── rag.md                # RAG pipeline, chunking, and similarity math
-│   ├── security.md           # SSRF protection, sanitization & RLS
-│   └── testing.md            # Testing strategy & coverage guidelines
+│   ├── architecture.md               # High-level architecture & design patterns
+│   ├── production-lessons.md         # Production incident log & root cause resolutions
+│   ├── rag.md                        # RAG pipeline, chunking math & similarity calibration
+│   ├── security.md                   # Multi-tenant isolation & Row-Level Security model
+│   └── testing.md                    # Vitest, RTL, axe-core & Playwright test strategy
 ├── lib/
-│   ├── ai/                   # Multi-provider LLM & embedding factories
-│   └── supabase/             # Client, server, and admin Supabase instances
+│   ├── ai/                           # Multi-provider LLM & embedding factory
+│   ├── auth/                         # Session verification & workspace membership guards
+│   ├── rate-limit.ts                 # PostgreSQL-backed sliding window rate limiter
+│   └── supabase/                     # Client, server, and service-role Supabase clients
 ├── services/
-│   ├── document-processor.ts # Extraction, chunking, and vector embedding
-│   └── rag-service.ts        # LangChain.js query matching and streaming
+│   ├── document-processor.ts         # Page extraction, recursive chunking & pgvector storage
+│   └── rag-service.ts                # LangChain retrieval, adaptive thresholding & streaming
 ├── supabase/
-│   └── migrations/           # Database schema & pgvector functions
+│   └── migrations/                   # SQL migrations & stored procedures
 └── tests/
-    ├── components/           # UI component & accessibility tests
-    └── unit/                 # Text splitter, chunking & validation tests
+    ├── components/                   # RTL and axe-core accessibility tests
+    ├── e2e/                          # Playwright end-to-end tests for 10 core flows
+    └── unit/                         # Unit tests (auth guards, rate limiting, embeddings, etc.)
 ```
-
----
-
-## 📚 Deep-Dive Documentation
-
-- [System Architecture](docs/architecture.md)
-- [Retrieval-Augmented Generation (RAG) Specifications](docs/rag.md)
-- [Accessibility Compliance (WCAG 2.2 AA)](docs/accessibility.md)
-- [Security Hardening & Threat Model](docs/security.md)
-- [Free Tier Quotas & Production Limits](docs/free-tier-limitations.md)
-- [Production Lessons & Engineering Log](docs/production-lessons.md)
-- [Automated Testing Strategy](docs/testing.md)
 
 ---
 
 ## 📄 License
 
-MIT License. Free and open source for portfolio, commercial, and educational use.
+MIT License. See [LICENSE](LICENSE) for details.

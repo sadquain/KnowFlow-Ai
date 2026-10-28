@@ -64,9 +64,9 @@ export function ModelSelector({
   const [isOpen, setIsOpen] = useState(false);
 
   const activeOption =
-    AVAILABLE_MODELS.find(
-      (m) => m.provider === selectedProvider && m.model === selectedModel
-    ) || AVAILABLE_MODELS.find((m) => m.provider === selectedProvider) || AVAILABLE_MODELS[0];
+    AVAILABLE_MODELS.find((m) => m.provider === selectedProvider && m.model === selectedModel) ||
+    AVAILABLE_MODELS.find((m) => m.provider === selectedProvider) ||
+    AVAILABLE_MODELS[0];
 
   const ActiveIcon = activeOption.icon;
 
@@ -101,8 +101,8 @@ export function ModelSelector({
             activeOption.provider === "gemini"
               ? "bg-violet-100 text-violet-700"
               : activeOption.provider === "groq"
-              ? "bg-amber-100 text-amber-700"
-              : "bg-emerald-100 text-emerald-700"
+                ? "bg-amber-100 text-amber-700"
+                : "bg-emerald-100 text-emerald-700"
           }`}
         >
           <ActiveIcon className="h-3 w-3" />
@@ -126,7 +126,8 @@ export function ModelSelector({
             {AVAILABLE_MODELS.map((option) => {
               const isSelected =
                 option.provider === selectedProvider &&
-                (option.model === selectedModel || (!selectedModel && option.provider === activeOption.provider));
+                (option.model === selectedModel ||
+                  (!selectedModel && option.provider === activeOption.provider));
               const Icon = option.icon;
 
               return (
@@ -140,9 +141,7 @@ export function ModelSelector({
                     setIsOpen(false);
                   }}
                   className={`flex w-full items-start justify-between rounded-xl px-3 py-2.5 text-left transition ${
-                    isSelected
-                      ? "bg-blue-50/80 text-blue-900"
-                      : "hover:bg-slate-50 text-slate-700"
+                    isSelected ? "bg-blue-50/80 text-blue-900" : "hover:bg-slate-50 text-slate-700"
                   }`}
                 >
                   <div className="flex items-start gap-2.5">
@@ -151,24 +150,18 @@ export function ModelSelector({
                         option.provider === "gemini"
                           ? "bg-violet-100 text-violet-700"
                           : option.provider === "groq"
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-emerald-100 text-emerald-700"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-emerald-100 text-emerald-700"
                       }`}
                     >
                       <Icon className="h-3 w-3" />
                     </span>
                     <div>
-                      <div className="text-xs font-semibold text-slate-900">
-                        {option.label}
-                      </div>
-                      <div className="text-[11px] text-slate-500">
-                        {option.tag}
-                      </div>
+                      <div className="text-xs font-semibold text-slate-900">{option.label}</div>
+                      <div className="text-[11px] text-slate-500">{option.tag}</div>
                     </div>
                   </div>
-                  {isSelected && (
-                    <Check className="h-4 w-4 shrink-0 text-blue-600 mt-1" />
-                  )}
+                  {isSelected && <Check className="h-4 w-4 shrink-0 text-blue-600 mt-1" />}
                 </button>
               );
             })}

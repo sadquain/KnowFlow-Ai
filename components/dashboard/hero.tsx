@@ -45,8 +45,8 @@ export function DashboardHero({ onOpenUpload, workspaceId }: DashboardHeroProps)
 
         {/* Supporting Text */}
         <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
-          Ask questions, discover insights, and get answers grounded in your own documents.
-          Every answer is anchored by verifiable citations and zero hallucinations.
+          Ask questions, discover insights, and get answers grounded in your own documents. Every
+          answer is anchored by verifiable citations and zero hallucinations.
         </p>
 
         {/* Action CTAs */}

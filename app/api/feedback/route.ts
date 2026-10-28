@@ -16,10 +16,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (typeof isPositive !== "boolean") {
-      return NextResponse.json(
-        { error: "Field 'isPositive' must be a boolean." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Field 'isPositive' must be a boolean." }, { status: 400 });
     }
 
     // 1. Verify caller has access to the workspace

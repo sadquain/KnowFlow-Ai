@@ -71,7 +71,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           setWorkspaces(list);
 
           if (list.length > 0) {
-            const savedId = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+            const savedId =
+              typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
             const match = savedId ? list.find((w) => w.id === savedId) : null;
             const active = match || list[0];
             setCurrentWorkspaceIdState(active.id);

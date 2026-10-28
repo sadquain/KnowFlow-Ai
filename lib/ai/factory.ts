@@ -15,7 +15,9 @@ export interface ProviderConfig {
 
 export function getProviderConfig(): ProviderConfig {
   const aiProvider = (process.env.AI_PROVIDER || "ollama").toLowerCase() as SupportedAIProvider;
-  const embeddingProvider = (process.env.EMBEDDING_PROVIDER || "ollama").toLowerCase() as SupportedEmbeddingProvider;
+  const embeddingProvider = (
+    process.env.EMBEDDING_PROVIDER || "ollama"
+  ).toLowerCase() as SupportedEmbeddingProvider;
   const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 
   let chatModelName = process.env.OLLAMA_CHAT_MODEL || "llama3.2";

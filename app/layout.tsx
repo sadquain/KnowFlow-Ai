@@ -30,11 +30,7 @@ export const metadata: Metadata = {
   authors: [{ name: "KnowFlow AI Engineering Team" }],
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full bg-slate-50 text-slate-900 selection:bg-blue-500 selection:text-white">

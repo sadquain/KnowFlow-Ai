@@ -23,11 +23,15 @@ describe("AI Provider Factory & Configuration Suite", () => {
 
   it("should throw a descriptive error when Gemini is requested without GEMINI_API_KEY", () => {
     delete process.env.GEMINI_API_KEY;
-    expect(() => getChatModel("gemini")).toThrow("GEMINI_API_KEY is not configured in environment variables.");
+    expect(() => getChatModel("gemini")).toThrow(
+      "GEMINI_API_KEY is not configured in environment variables."
+    );
   });
 
   it("should throw a descriptive error when Groq is requested without GROQ_API_KEY", () => {
     delete process.env.GROQ_API_KEY;
-    expect(() => getChatModel("groq")).toThrow("GROQ_API_KEY is not configured in environment variables.");
+    expect(() => getChatModel("groq")).toThrow(
+      "GROQ_API_KEY is not configured in environment variables."
+    );
   });
 });

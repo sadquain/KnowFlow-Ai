@@ -3,10 +3,7 @@ import { requireWorkspaceMember } from "@/lib/auth/require-workspace-member";
 import { AuthError } from "@/lib/auth/require-user";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     if (!id) {
@@ -62,10 +59,7 @@ export async function GET(
   }
 }
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     if (!id) {
@@ -114,7 +108,9 @@ export async function POST(
 
     if (existingMember) {
       return NextResponse.json(
-        { error: `User "${email}" is already a member of this workspace (${existingMember.role}).` },
+        {
+          error: `User "${email}" is already a member of this workspace (${existingMember.role}).`,
+        },
         { status: 409 }
       );
     }
@@ -155,10 +151,7 @@ export async function POST(
   }
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     if (!id) {
@@ -166,7 +159,10 @@ export async function PATCH(
     }
 
     // Only owners and admins can modify member roles
-    const { user: callerUser, role: callerRole } = await requireWorkspaceMember(id, ["owner", "admin"]);
+    const { user: callerUser, role: callerRole } = await requireWorkspaceMember(id, [
+      "owner",
+      "admin",
+    ]);
 
     const body = await req.json();
     const { userId, role } = body;
@@ -182,14 +178,13 @@ export async function PATCH(
     const adminDb = createAdminClient();
 
     // Check workspace owner
-    const { data: ws } = await adminDb
-      .from("workspaces")
-      .select("owner_id")
-      .eq("id", id)
-      .single();
+    const { data: ws } = await adminDb.from("workspaces").select("owner_id").eq("id", id).single();
 
     if (ws?.owner_id === userId) {
-      return NextResponse.json({ error: "Cannot change the role of the workspace owner." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Cannot change the role of the workspace owner." },
+        { status: 400 }
+      );
     }
 
     // Admins cannot modify other admins or owner
@@ -202,7 +197,10 @@ export async function PATCH(
         .maybeSingle();
 
       if (targetMember?.role === "admin" || targetMember?.role === "owner") {
-        return NextResponse.json({ error: "Admins cannot modify permissions of other admins or the owner." }, { status: 403 });
+        return NextResponse.json(
+          { error: "Admins cannot modify permissions of other admins or the owner." },
+          { status: 403 }
+        );
       }
     }
 
@@ -230,10 +228,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     if (!id) {
@@ -252,14 +247,13 @@ export async function DELETE(
     const adminDb = createAdminClient();
 
     // Check workspace owner
-    const { data: ws } = await adminDb
-      .from("workspaces")
-      .select("owner_id")
-      .eq("id", id)
-      .single();
+    const { data: ws } = await adminDb.from("workspaces").select("owner_id").eq("id", id).single();
 
     if (ws?.owner_id === targetUserId) {
-      return NextResponse.json({ error: "The workspace owner cannot leave or be removed." }, { status: 400 });
+      return NextResponse.json(
+        { error: "The workspace owner cannot leave or be removed." },
+        { status: 400 }
+      );
     }
 
     // Permission check: caller is removing themselves (leaving) OR caller is owner/admin
@@ -267,7 +261,10 @@ export async function DELETE(
     const isOwnerOrAdmin = callerRole === "owner" || callerRole === "admin";
 
     if (!isSelfLeaving && !isOwnerOrAdmin) {
-      return NextResponse.json({ error: "Forbidden. Insufficient permissions to remove members." }, { status: 403 });
+      return NextResponse.json(
+        { error: "Forbidden. Insufficient permissions to remove members." },
+        { status: 403 }
+      );
     }
 
     const { error: deleteError } = await adminDb

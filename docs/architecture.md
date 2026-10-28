@@ -8,7 +8,7 @@
 graph TD
     User([User / Browser]) <--> UI[Next.js 15+ App Router Client Components]
     UI <--> API[Next.js Server Actions & API Route Handlers]
-    
+
     subgraph "Server Services & Security Boundary"
         AuthSvc[Supabase Auth & Session Verification]
         AuthzSvc[Workspace-Level Multi-tenant Guard]
@@ -48,6 +48,7 @@ graph TD
 ## 2. Layered Architecture
 
 ### A. Presentation Layer (Next.js App Router)
+
 - **Styling**: Tailwind CSS + curated bright color palette (Electric Blue `#2563EB`, Cyan `#06B6D4`, Violet `#7C3AED`, Pink `#EC4899`, Emerald `#10B981`).
 - **Primitives**: Radix UI accessible headless components (`@radix-ui/react-dialog`, `@radix-ui/react-dropdown-menu`, `@radix-ui/react-tabs`, `@radix-ui/react-tooltip`).
 - **Icons & Data Viz**: Lucide React and Recharts.
@@ -55,12 +56,14 @@ graph TD
 - **Accessibility**: Semantic HTML5 tags, full keyboard navigation, visible focus rings, ARIA live region orchestration for LLM streaming, WCAG 2.2 AA conformance.
 
 ### B. Security & Isolation Layer (Zero-Trust Multi-Tenancy)
+
 - Every request resolves the authenticated user session via Supabase Auth JWT cookies.
 - Application-level verification verifies that the user is an authorized member or owner of `workspace_id`.
 - PostgreSQL **Row Level Security (RLS)** acts as a defense-in-depth barrier.
 - All vector search queries are strictly bounded by `workspace_id` in SQL stored procedures (`match_document_chunks`).
 
 ### C. Document Processing Pipeline
+
 1. **Upload**: Client sends multipart file (PDF, DOCX, TXT, MD) up to 10MB.
 2. **Sanitization**: File type, size, extension, MIME type validated via server rules.
 3. **Storage**: Original document saved in private Supabase Storage bucket (`documents/{workspace_id}/{document_id}`).
@@ -74,6 +77,7 @@ graph TD
 8. **Vector Persistence**: Saved into `document_chunks` table containing `content`, `metadata` (page number, chunk index, byte offset), and `embedding` vector.
 
 ### D. LangChain.js RAG & Streaming Engine
+
 1. Query validation and sanitization (defense against prompt injection).
 2. Query embedding generated via selected embedding provider.
 3. Top-K semantic similarity retrieval via pgvector `match_document_chunks(query_embedding, match_threshold, match_count, filter_workspace_id)`.

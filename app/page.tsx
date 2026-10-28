@@ -184,8 +184,8 @@ function LandingContent() {
                 Engineered for Reliability &amp; Precision
               </h2>
               <p className="mt-3 text-sm text-slate-400">
-                Every layer of KnowFlow AI is architected for verifiable accuracy and secure enterprise
-                isolation.
+                Every layer of KnowFlow AI is architected for verifiable accuracy and secure
+                enterprise isolation.
               </p>
             </div>
 
@@ -196,7 +196,8 @@ function LandingContent() {
                 </div>
                 <h3 className="text-sm font-semibold text-white">Multi-LLM Provider Engine</h3>
                 <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                  Switch between Google Gemini, Groq ultra-low latency, or local Ollama models on demand.
+                  Switch between Google Gemini, Groq ultra-low latency, or local Ollama models on
+                  demand.
                 </p>
               </div>
 
@@ -206,7 +207,8 @@ function LandingContent() {
                 </div>
                 <h3 className="text-sm font-semibold text-white">Verifiable Citations</h3>
                 <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                  Every assistant answer includes page numbers, source snippets, and cosine similarity scores.
+                  Every assistant answer includes page numbers, source snippets, and cosine
+                  similarity scores.
                 </p>
               </div>
 
@@ -216,7 +218,8 @@ function LandingContent() {
                 </div>
                 <h3 className="text-sm font-semibold text-white">Row-Level Security</h3>
                 <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                  Session-authenticated Postgres RLS policies ensure complete isolation across workspaces.
+                  Session-authenticated Postgres RLS policies ensure complete isolation across
+                  workspaces.
                 </p>
               </div>
 
@@ -226,7 +229,8 @@ function LandingContent() {
                 </div>
                 <h3 className="text-sm font-semibold text-white">Native pgvector Storage</h3>
                 <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                  High-dimensional embeddings matched using HNSW vector indexes directly in PostgreSQL.
+                  High-dimensional embeddings matched using HNSW vector indexes directly in
+                  PostgreSQL.
                 </p>
               </div>
             </div>

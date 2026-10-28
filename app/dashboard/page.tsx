@@ -115,7 +115,10 @@ function DashboardContent() {
   return (
     <div className="space-y-8">
       {/* Hero Banner */}
-      <DashboardHero onOpenUpload={() => setIsUploadOpen(true)} workspaceId={workspaceId || undefined} />
+      <DashboardHero
+        onOpenUpload={() => setIsUploadOpen(true)}
+        workspaceId={workspaceId || undefined}
+      />
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -176,7 +179,8 @@ function DashboardContent() {
               </div>
             ) : documents.length === 0 ? (
               <div className="py-10 text-center text-xs text-slate-400">
-                No documents uploaded yet. Click &ldquo;Upload documents&rdquo; above to add your first file.
+                No documents uploaded yet. Click &ldquo;Upload documents&rdquo; above to add your
+                first file.
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

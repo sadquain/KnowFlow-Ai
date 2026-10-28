@@ -15,12 +15,14 @@ export interface ProcessingResult {
 }
 
 export function normalizeText(text: string): string {
-  return text
-    // Replace non-printable ASCII control characters
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
-    // Normalize line breaks to standard LF
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n");
+  return (
+    text
+      // Replace non-printable ASCII control characters
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+      // Normalize line breaks to standard LF
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+  );
 }
 
 export async function extractTextFromFile(
@@ -83,7 +85,9 @@ export async function extractTextFromFile(
     return [{ pageNumber: 1, text }];
   }
 
-  throw new Error(`Unsupported document file format: "${fileType}". Supported formats: PDF, DOCX, TXT, MD.`);
+  throw new Error(
+    `Unsupported document file format: "${fileType}". Supported formats: PDF, DOCX, TXT, MD.`
+  );
 }
 
 export async function processDocument(
@@ -105,7 +109,9 @@ export async function processDocument(
       .eq("id", documentId);
 
     if (statusUpdateError) {
-      throw new Error(`Failed to update document status to processing: ${statusUpdateError.message}`);
+      throw new Error(
+        `Failed to update document status to processing: ${statusUpdateError.message}`
+      );
     }
 
     // 2. Extract text from file buffer
@@ -139,7 +145,9 @@ export async function processDocument(
     const vectors = await embeddingModel.embedDocuments(textsToEmbed);
 
     if (!vectors || vectors.length !== splitDocs.length) {
-      throw new Error(`Embedding generation returned an invalid vector count: expected ${splitDocs.length}, received ${vectors?.length ?? 0}`);
+      throw new Error(
+        `Embedding generation returned an invalid vector count: expected ${splitDocs.length}, received ${vectors?.length ?? 0}`
+      );
     }
 
     // 5. Idempotent cleanup: Delete existing chunks before inserting new ones
@@ -170,9 +178,7 @@ export async function processDocument(
       created_at: new Date().toISOString(),
     }));
 
-    const { error: insertError } = await supabase
-      .from("document_chunks")
-      .insert(chunksPayload);
+    const { error: insertError } = await supabase.from("document_chunks").insert(chunksPayload);
 
     if (insertError) {
       throw new Error(`Failed to insert document chunks into database: ${insertError.message}`);
@@ -198,9 +204,15 @@ export async function processDocument(
       chunkCount: splitDocs.length,
     };
   } catch (error: unknown) {
-    let errorMsg = error instanceof Error ? error.message : "An unexpected error occurred during processing.";
-    if (errorMsg.includes("fetch failed") || errorMsg.includes("ECONNREFUSED") || errorMsg.includes("11434")) {
-      errorMsg = "Embedding generation failed: Unable to connect to embedding service. If using Ollama, ensure it is running at http://localhost:11434, or set EMBEDDING_PROVIDER=gemini in .env.local.";
+    let errorMsg =
+      error instanceof Error ? error.message : "An unexpected error occurred during processing.";
+    if (
+      errorMsg.includes("fetch failed") ||
+      errorMsg.includes("ECONNREFUSED") ||
+      errorMsg.includes("11434")
+    ) {
+      errorMsg =
+        "Embedding generation failed: Unable to connect to embedding service. If using Ollama, ensure it is running at http://localhost:11434, or set EMBEDDING_PROVIDER=gemini in .env.local.";
     }
 
     // Ensure document is explicitly marked failed in database with the exact error

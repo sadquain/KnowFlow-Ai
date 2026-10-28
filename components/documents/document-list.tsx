@@ -181,7 +181,8 @@ export function DocumentList({
           </div>
           <h3 className="mt-4 text-base font-bold text-slate-900">No documents yet</h3>
           <p className="mt-1 max-w-sm text-xs text-slate-500">
-            Upload your first PDF, DOCX, TXT, or Markdown document to start grounding your AI queries.
+            Upload your first PDF, DOCX, TXT, or Markdown document to start grounding your AI
+            queries.
           </p>
           <button
             type="button"

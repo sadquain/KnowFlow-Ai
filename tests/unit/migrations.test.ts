@@ -31,7 +31,9 @@ describe("Phase 3 Database Migrations & Security Schema Suite", () => {
     const sql = fs.readFileSync(phase3MigrationPath, "utf-8");
     expect(sql).toContain("SECURITY INVOKER");
     expect(sql).toContain("public.is_workspace_member(p_workspace_id)");
-    expect(sql).not.toContain("SECURITY DEFINER\nAS $$\nBEGIN\n    RETURN QUERY\n    SELECT\n        dc.id,\n        dc.document_id,\n        d.title AS document_title");
+    expect(sql).not.toContain(
+      "SECURITY DEFINER\nAS $$\nBEGIN\n    RETURN QUERY\n    SELECT\n        dc.id,\n        dc.document_id,\n        d.title AS document_title"
+    );
   });
 
   it("should define rate_limits table and RLS on all critical tables", () => {
@@ -59,7 +61,9 @@ describe("Phase 3 Database Migrations & Security Schema Suite", () => {
   it("should add embedding_model column and verify vector(768) compatibility", () => {
     const sql = fs.readFileSync(phase3MigrationPath, "utf-8");
     expect(sql).toContain("ALTER TABLE public.documents\nADD COLUMN IF NOT EXISTS embedding_model");
-    expect(sql).toContain("ALTER TABLE public.document_chunks\nADD COLUMN IF NOT EXISTS embedding_model");
+    expect(sql).toContain(
+      "ALTER TABLE public.document_chunks\nADD COLUMN IF NOT EXISTS embedding_model"
+    );
     expect(sql).toContain("vector(768)");
   });
 

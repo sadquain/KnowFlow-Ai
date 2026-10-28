@@ -439,8 +439,8 @@ export function WorkspaceSettingsSection() {
                           isMemberOwner
                             ? "bg-purple-100 text-purple-700"
                             : member.role === "admin"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-slate-100 text-slate-600"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-slate-100 text-slate-600"
                         }`}
                       >
                         {member.role}
@@ -490,8 +490,8 @@ export function WorkspaceSettingsSection() {
             <span>Danger Zone</span>
           </div>
           <p className="mt-1 text-xs text-red-700 leading-relaxed">
-            Permanently delete this workspace, including all uploaded documents, pgvector embeddings,
-            and conversation logs. This action cannot be undone.
+            Permanently delete this workspace, including all uploaded documents, pgvector
+            embeddings, and conversation logs. This action cannot be undone.
           </p>
 
           <div className="mt-4">

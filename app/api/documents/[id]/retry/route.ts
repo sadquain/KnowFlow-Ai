@@ -4,10 +4,7 @@ import { AuthError } from "@/lib/auth/require-user";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { processDocument } from "@/services/document-processor";
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const { searchParams } = new URL(req.url);
@@ -35,7 +32,9 @@ export async function POST(
 
     if (downloadError || !fileBlob) {
       return NextResponse.json(
-        { error: `Failed to download file from storage: ${downloadError?.message || "File not found"}` },
+        {
+          error: `Failed to download file from storage: ${downloadError?.message || "File not found"}`,
+        },
         { status: 404 }
       );
     }

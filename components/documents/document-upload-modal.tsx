@@ -181,7 +181,10 @@ export function DocumentUploadModal({
 
           {/* Error Message */}
           {error && (
-            <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700" role="alert">
+            <div
+              className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700"
+              role="alert"
+            >
               <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
               <span>{error}</span>
             </div>
@@ -189,7 +192,10 @@ export function DocumentUploadModal({
 
           {/* Success Message */}
           {successMsg && (
-            <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700" role="status">
+            <div
+              className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700"
+              role="status"
+            >
               <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
               <span>{successMsg}</span>
             </div>

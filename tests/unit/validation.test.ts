@@ -20,7 +20,9 @@ describe("Validation & Sanitization Suite", () => {
 
   it("should throw an error when question exceeds 1000 characters", () => {
     const longQuestion = "a".repeat(1001);
-    expect(() => sanitizeQuestion(longQuestion)).toThrow("exceeds maximum length of 1,000 characters");
+    expect(() => sanitizeQuestion(longQuestion)).toThrow(
+      "exceeds maximum length of 1,000 characters"
+    );
   });
 
   it("should correctly format byte quantities into human-readable strings", () => {

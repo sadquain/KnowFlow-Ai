@@ -49,9 +49,10 @@ export async function POST(req: NextRequest) {
     // Verify authenticated user is a member of the workspace
     const { user, supabase } = await requireWorkspaceMember(workspaceId);
 
-    const convTitle = title && typeof title === "string" && title.trim().length > 0
-      ? title.trim()
-      : "New Conversation";
+    const convTitle =
+      title && typeof title === "string" && title.trim().length > 0
+        ? title.trim()
+        : "New Conversation";
 
     // Insert conversation using user-scoped client (subject to RLS)
     const { data, error } = await supabase

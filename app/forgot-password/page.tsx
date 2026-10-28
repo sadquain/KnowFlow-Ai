@@ -47,11 +47,15 @@ export default function ForgotPasswordPage() {
           Reset Your Password
         </h1>
         <p className="mt-1.5 text-xs text-slate-400">
-          Enter your registered email address and we&apos;ll send you a secure link to recover your account.
+          Enter your registered email address and we&apos;ll send you a secure link to recover your
+          account.
         </p>
 
         {error && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300" role="alert">
+          <div
+            className="mt-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300"
+            role="alert"
+          >
             <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
             <span>{error}</span>
           </div>
@@ -62,7 +66,8 @@ export default function ForgotPasswordPage() {
             <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-400" />
             <h2 className="mt-3 text-sm font-bold text-white">Reset Link Dispatched</h2>
             <p className="mt-1 text-xs text-slate-300 leading-relaxed">
-              Check your inbox at <strong className="text-emerald-300">{email}</strong> for instructions to reset your password.
+              Check your inbox at <strong className="text-emerald-300">{email}</strong> for
+              instructions to reset your password.
             </p>
             <Link
               href="/"
@@ -75,7 +80,10 @@ export default function ForgotPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
-              <label htmlFor="email-input" className="block text-xs font-medium text-slate-300 mb-1.5">
+              <label
+                htmlFor="email-input"
+                className="block text-xs font-medium text-slate-300 mb-1.5"
+              >
                 Email Address
               </label>
               <div className="relative">

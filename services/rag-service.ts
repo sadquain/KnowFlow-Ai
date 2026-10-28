@@ -2,7 +2,12 @@ import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { getChatModel, getEmbeddingModel, getProviderConfig } from "@/lib/ai/factory";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { RetrievedChunk, GroundedCitation, SupportedAIProvider, SupportedEmbeddingProvider } from "@/lib/ai/types";
+import type {
+  RetrievedChunk,
+  GroundedCitation,
+  SupportedAIProvider,
+  SupportedEmbeddingProvider,
+} from "@/lib/ai/types";
 
 export interface RAGQueryOptions {
   question: string;
@@ -23,7 +28,7 @@ export interface RAGStreamResult {
   conversationId?: string;
 }
 
-const SYSTEM_PROMPT = `You are KnowFlow AI, a rigorous and truthful document knowledge assistant.
+export const SYSTEM_PROMPT = `You are KnowFlow AI, a rigorous and truthful document knowledge assistant.
 Your answers MUST be strictly grounded in the Source Context provided below.
 
 Strict Directives:
@@ -52,7 +57,6 @@ export function sanitizeQuestion(question: string): string {
   return trimmed;
 }
 
-
 export async function retrieveRelevantChunks(
   question: string,
   workspaceId: string,
@@ -67,7 +71,7 @@ export async function retrieveRelevantChunks(
     const embedProvider =
       process.env.EMBEDDING_PROVIDER === "gemini" || process.env.GEMINI_API_KEY
         ? "gemini"
-        : (process.env.EMBEDDING_PROVIDER || "ollama");
+        : process.env.EMBEDDING_PROVIDER || "ollama";
 
     let embeddingModel;
     try {
@@ -147,8 +151,8 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
     (activeProvider === "gemini"
       ? process.env.GEMINI_CHAT_MODEL || "gemini-3.5-flash"
       : activeProvider === "groq"
-      ? process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b"
-      : process.env.OLLAMA_CHAT_MODEL || "llama3.2");
+        ? process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b"
+        : process.env.OLLAMA_CHAT_MODEL || "llama3.2");
 
   const convId = options.conversationId || crypto.randomUUID();
 
@@ -201,7 +205,8 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
 
   // 3. Handle insufficient evidence directly
   if (chunks.length === 0) {
-    const insufficientMsg = "I couldn't find enough information in your knowledge base to answer that.";
+    const insufficientMsg =
+      "I couldn't find enough information in your knowledge base to answer that.";
     const encoder = new TextEncoder();
 
     // Log usage
@@ -238,7 +243,9 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
     const staticStream = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: "conversation", conversationId: convId })}\n\n`)
+          encoder.encode(
+            `data: ${JSON.stringify({ type: "conversation", conversationId: convId })}\n\n`
+          )
         );
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: "citations", citations: [] })}\n\n`)
@@ -287,7 +294,9 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
       try {
         // Send conversation event first
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: "conversation", conversationId: convId })}\n\n`)
+          encoder.encode(
+            `data: ${JSON.stringify({ type: "conversation", conversationId: convId })}\n\n`
+          )
         );
 
         // Send citations
@@ -338,7 +347,9 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
                 message_id: assistantMsg.id,
                 document_id: c.document_id,
                 chunk_id:
-                  c.chunk_id && !c.chunk_id.startsWith("chunk-seed") && !c.chunk_id.startsWith("cite-")
+                  c.chunk_id &&
+                  !c.chunk_id.startsWith("chunk-seed") &&
+                  !c.chunk_id.startsWith("cite-")
                     ? c.chunk_id
                     : null,
                 similarity_score: c.similarity_score,
@@ -354,7 +365,9 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
           console.error("[rag-service] Error persisting completed assistant message:", err);
         }
 
-        const promptTokens = Math.ceil((contextText.length + cleanQuestion.length + SYSTEM_PROMPT.length) / 4);
+        const promptTokens = Math.ceil(
+          (contextText.length + cleanQuestion.length + SYSTEM_PROMPT.length) / 4
+        );
         const completionTokens = Math.ceil(fullText.length / 4);
         const totalTokens = promptTokens + completionTokens;
 
@@ -394,8 +407,12 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
       } catch (err: unknown) {
         const isAborted = options.abortSignal?.aborted;
         const latencyMs = Date.now() - startTime;
-        const errorMessage = err instanceof Error ? err.message : String(err || "Unknown generation failure");
-        const errorCode = typeof err === "object" && err !== null && "code" in err ? String((err as { code: unknown }).code) : undefined;
+        const errorMessage =
+          err instanceof Error ? err.message : String(err || "Unknown generation failure");
+        const errorCode =
+          typeof err === "object" && err !== null && "code" in err
+            ? String((err as { code: unknown }).code)
+            : undefined;
 
         await supabase.from("ai_usage").insert({
           workspace_id: options.workspaceId,

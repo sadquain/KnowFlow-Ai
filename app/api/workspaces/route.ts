@@ -117,7 +117,10 @@ export async function POST(req: NextRequest) {
 
     if (memberError) {
       // Rollback workspace creation to guarantee atomic consistency
-      console.error("[POST /api/workspaces] Failed to register owner member, rolling back:", memberError);
+      console.error(
+        "[POST /api/workspaces] Failed to register owner member, rolling back:",
+        memberError
+      );
       await adminDb.from("workspaces").delete().eq("id", workspace.id);
       return NextResponse.json(
         { error: "Failed to establish workspace ownership. Transaction aborted." },

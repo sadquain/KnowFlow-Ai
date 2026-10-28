@@ -29,10 +29,7 @@ export async function POST(req: NextRequest) {
     ]);
 
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "File exceeds the 10MB limit." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "File exceeds the 10MB limit." }, { status: 400 });
     }
 
     const fileName = file.name;
@@ -89,12 +86,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Process document synchronously (chunking & embeddings)
-    const result = await processDocument(
-      documentId,
-      workspaceId,
-      buffer,
-      ext.replace(".", "")
-    );
+    const result = await processDocument(documentId, workspaceId, buffer, ext.replace(".", ""));
 
     return NextResponse.json({
       success: result.success,

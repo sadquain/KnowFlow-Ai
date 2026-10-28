@@ -54,6 +54,7 @@ The Retrieval-Augmented Generation pipeline is implemented using `@langchain/cor
 ## 2. Chunking Strategy
 
 We use LangChain's `RecursiveCharacterTextSplitter`:
+
 - **Default Chunk Size**: 1,000 characters
 - **Chunk Overlap**: 200 characters (20% overlap ensures semantic continuity across boundaries)
 - **Separators**: `["\n\n", "\n", ". ", " ", ""]`

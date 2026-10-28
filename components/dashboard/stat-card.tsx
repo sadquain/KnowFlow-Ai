@@ -64,12 +64,8 @@ export function StatCard({ title, value, subtitle, icon: Icon, colorScheme }: St
         </div>
       </div>
       <div className="mt-3">
-        <span className="text-3xl font-extrabold tracking-tight text-slate-900">
-          {value}
-        </span>
-        {subtitle && (
-          <p className="mt-1 text-xs text-slate-500">{subtitle}</p>
-        )}
+        <span className="text-3xl font-extrabold tracking-tight text-slate-900">{value}</span>
+        {subtitle && <p className="mt-1 text-xs text-slate-500">{subtitle}</p>}
       </div>
     </div>
   );
