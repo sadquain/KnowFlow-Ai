@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -10,10 +10,12 @@ import {
   BarChart3,
   Settings,
   Sparkles,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher";
+import { createClient } from "@/lib/supabase/client";
 
 interface SidebarProps {
   currentWorkspaceId?: string;
@@ -25,6 +27,23 @@ export function Sidebar({ currentWorkspaceId, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { workspaceId } = useWorkspace();
   const activeWsId = workspaceId || currentWorkspaceId || "";
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("[Sidebar] Sign out error:", err);
+    } finally {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("knowflow_active_workspace_id");
+        window.location.replace("/");
+      }
+    }
+  };
 
   const navItems = [
     {
@@ -129,8 +148,8 @@ export function Sidebar({ currentWorkspaceId, isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        {/* Footer Info */}
-        <div className="border-t border-slate-100 p-4">
+        {/* Footer Info & Sign Out */}
+        <div className="border-t border-slate-100 p-4 space-y-2">
           <div className="rounded-xl bg-linear-to-br from-blue-50 via-cyan-50 to-violet-50 p-3 text-xs text-slate-700">
             <div className="flex items-center gap-1.5 font-semibold text-blue-900">
               <span className="flex h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-200" />
@@ -140,6 +159,16 @@ export function Sidebar({ currentWorkspaceId, isOpen, onClose }: SidebarProps) {
               Multi-provider RAG with PostgreSQL pgvector.
             </p>
           </div>
+
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 transition"
+          >
+            <LogOut className="h-4 w-4 text-slate-400 group-hover:text-red-500" />
+            <span>{isSigningOut ? "Signing out..." : "Sign Out"}</span>
+          </button>
         </div>
       </aside>
     </>

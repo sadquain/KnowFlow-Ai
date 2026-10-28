@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { Header } from "@/components/navigation/header";
 import { WorkspaceProvider, useWorkspace } from "@/components/providers/workspace-provider";
+import { createClient } from "@/lib/supabase/client";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -13,6 +14,24 @@ interface AppShellProps {
 function AppShellInner({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { workspaceId } = useWorkspace();
+
+  useEffect(() => {
+    const supabase = createClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("knowflow_active_workspace_id");
+          window.location.replace("/");
+        }
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50">

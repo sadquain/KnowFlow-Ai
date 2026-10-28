@@ -15,6 +15,7 @@ interface HeaderProps {
 export function Header({ onToggleSidebar, activeProvider = "gemini" }: HeaderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -24,8 +25,14 @@ export function Header({ onToggleSidebar, activeProvider = "gemini" }: HeaderPro
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null);
+      if (event === "SIGNED_OUT") {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("knowflow_active_workspace_id");
+          window.location.replace("/");
+        }
+      }
     });
 
     return () => {
@@ -34,9 +41,19 @@ export function Header({ onToggleSidebar, activeProvider = "gemini" }: HeaderPro
   }, []);
 
   const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    setUser(null);
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("[Header] Sign out error:", err);
+    } finally {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("knowflow_active_workspace_id");
+        window.location.replace("/");
+      }
+    }
   };
 
   return (
@@ -86,9 +103,10 @@ export function Header({ onToggleSidebar, activeProvider = "gemini" }: HeaderPro
             <button
               type="button"
               onClick={handleSignOut}
+              disabled={isSigningOut}
               title="Sign out"
               aria-label="Sign out"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-red-50 hover:text-red-600 transition"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 transition"
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>
