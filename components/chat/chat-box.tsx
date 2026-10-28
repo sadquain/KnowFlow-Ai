@@ -268,7 +268,17 @@ export function ChatBox({ workspaceId }: ChatBoxProps) {
       } else {
         const errorMsg = err instanceof Error ? err.message : "Failed to generate answer.";
         setErrorMsg(errorMsg);
-        setMessages((prev) => prev.filter((msg) => msg.id !== assistantMsgId));
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMsgId
+              ? {
+                  ...msg,
+                  content: `⚠️ ${errorMsg}`,
+                  isStreaming: false,
+                }
+              : msg
+          )
+        );
       }
     } finally {
       setIsGenerating(false);

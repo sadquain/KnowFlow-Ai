@@ -58,13 +58,17 @@ export async function retrieveRelevantChunks(
   workspaceId: string,
   documentIds?: string[],
   matchThreshold: number = 0.35,
-  matchCount: number = 5,
-  provider?: SupportedAIProvider
+  matchCount: number = 5
 ): Promise<RetrievedChunk[]> {
   try {
     const supabase = createAdminClient();
-    const embedProvider = provider === "gemini" ? "gemini" : provider === "groq" ? (process.env.GEMINI_API_KEY ? "gemini" : "ollama") : (process.env.EMBEDDING_PROVIDER === "gemini" ? "gemini" : "ollama");
-    
+    // Embedding model must match the indexed chunk vectors (Gemini 768-dim or Ollama 768-dim),
+    // independent of whichever LLM is chosen for chat response generation.
+    const embedProvider =
+      process.env.EMBEDDING_PROVIDER === "gemini" || process.env.GEMINI_API_KEY
+        ? "gemini"
+        : (process.env.EMBEDDING_PROVIDER || "ollama");
+
     let embeddingModel;
     try {
       embeddingModel = getEmbeddingModel(embedProvider as SupportedEmbeddingProvider);
@@ -72,8 +76,19 @@ export async function retrieveRelevantChunks(
       embeddingModel = getEmbeddingModel(process.env.GEMINI_API_KEY ? "gemini" : "ollama");
     }
 
-    // 1. Generate query embedding
-    const queryEmbedding = await embeddingModel.embedQuery(question);
+    // 1. Generate query embedding with clear error reporting if network or local Ollama is down
+    let queryEmbedding: number[];
+    try {
+      queryEmbedding = await embeddingModel.embedQuery(question);
+    } catch (embedErr: unknown) {
+      const msg = embedErr instanceof Error ? embedErr.message : String(embedErr);
+      if (msg.includes("fetch failed") || msg.includes("ECONNREFUSED")) {
+        throw new Error(
+          `Could not connect to embedding provider (${embedProvider}). If using Ollama, ensure it is running at http://localhost:11434, or ensure GEMINI_API_KEY is configured in .env.local.`
+        );
+      }
+      throw embedErr;
+    }
 
     // 2. Call parameterized stored procedure in PostgreSQL
     const { data: initialData, error } = await supabase.rpc("match_document_chunks", {
@@ -170,8 +185,7 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
     options.workspaceId,
     options.documentIds,
     options.matchThreshold ?? 0.35,
-    options.matchCount ?? 5,
-    activeProvider
+    options.matchCount ?? 5
   );
 
   // 2. Map citations from verified retrieved chunks
