@@ -326,13 +326,24 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
           console.error("[rag-service] Error persisting completed assistant message:", err);
         }
 
+        const promptTokens = Math.ceil((contextText.length + cleanQuestion.length + SYSTEM_PROMPT.length) / 4);
+        const completionTokens = Math.ceil(fullText.length / 4);
+        const totalTokens = promptTokens + completionTokens;
+
         // Final event: Done
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({
               type: "done",
               conversationId: convId,
-              usage: { latency_ms: latencyMs, provider: activeProvider, model: activeModel },
+              usage: {
+                latency_ms: latencyMs,
+                provider: activeProvider,
+                model: activeModel,
+                prompt_tokens: promptTokens,
+                completion_tokens: completionTokens,
+                total_tokens: totalTokens,
+              },
             })}\n\n`
           )
         );
@@ -343,6 +354,9 @@ export async function executeRAGStream(options: RAGQueryOptions): Promise<RAGStr
           user_id: validUserId,
           provider: activeProvider,
           model: activeModel,
+          prompt_tokens: promptTokens,
+          completion_tokens: completionTokens,
+          total_tokens: totalTokens,
           latency_ms: latencyMs,
           status: "success",
         });

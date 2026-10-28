@@ -3,6 +3,7 @@ import { executeRAGStream } from "@/services/rag-service";
 import { requireWorkspaceMember, requireConversationAccess } from "@/lib/auth/require-workspace-member";
 import { AuthError } from "@/lib/auth/require-user";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,7 +27,25 @@ export async function POST(req: NextRequest) {
     // 1. Verify caller is authenticated and belongs to the workspace
     const { user } = await requireWorkspaceMember(workspaceId);
 
-    // 2. If conversationId is supplied, verify caller has access to it
+    // 2. Enforce DB-backed rate limiting before calling AI LLM
+    const rateLimit = await checkRateLimit(workspaceId, user.id, "chat", 30, 60);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: `Rate limit exceeded. You have reached the maximum of ${rateLimit.limit} queries per minute. Please try again in ${rateLimit.resetSeconds}s.`,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateLimit.resetSeconds),
+            "X-RateLimit-Limit": String(rateLimit.limit),
+            "X-RateLimit-Remaining": String(rateLimit.remaining),
+          },
+        }
+      );
+    }
+
+    // 3. If conversationId is supplied, verify caller has access to it
     if (conversationId) {
       await requireConversationAccess(conversationId, workspaceId);
     }
